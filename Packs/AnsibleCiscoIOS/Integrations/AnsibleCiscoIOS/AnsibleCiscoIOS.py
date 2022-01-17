@@ -83,10 +83,9 @@ def main() -> None:
             return_results(generic_ansible('CiscoIOS', 'ios_vlans', args, int_params, host_type))
         elif command == 'ios-vrf':
             return_results(generic_ansible('CiscoIOS', 'ios_vrf', args, int_params, host_type))
-    # Log exceptions and return errors
     except Exception as e:
         demisto.error(traceback.format_exc())  # print the traceback
-        return_error(f'Failed to execute {command} command.\nError:\n{str(e)}')
+        return_error(f'Failed to execute {command} command.\nError:\n{e}')
 
 
 # ENTRY POINT

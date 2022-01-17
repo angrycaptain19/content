@@ -45,10 +45,9 @@ def main() -> None:
             return_results(generic_ansible('Kubernetes', 'k8s_scale', args, int_params, host_type, creds_mapping))
         elif command == 'k8s-service':
             return_results(generic_ansible('Kubernetes', 'k8s_service', args, int_params, host_type, creds_mapping))
-    # Log exceptions and return errors
     except Exception as e:
         demisto.error(traceback.format_exc())  # print the traceback
-        return_error(f'Failed to execute {command} command.\nError:\n{str(e)}')
+        return_error(f'Failed to execute {command} command.\nError:\n{e}')
 
 
 # ENTRY POINT

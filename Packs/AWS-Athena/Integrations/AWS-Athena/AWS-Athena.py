@@ -59,40 +59,44 @@ def aws_session(service='athena', region=None, roleArn=None, roleSessionName=Non
         })
 
     if roleSessionDuration is not None:
-        kwargs.update({'DurationSeconds': int(roleSessionDuration)})
+        kwargs['DurationSeconds'] = int(roleSessionDuration)
     elif AWS_ROLE_SESSION_DURATION is not None:
-        kwargs.update({'DurationSeconds': int(AWS_ROLE_SESSION_DURATION)})
-
+        kwargs['DurationSeconds'] = int(AWS_ROLE_SESSION_DURATION)
     if rolePolicy is not None:
-        kwargs.update({'Policy': rolePolicy})
+        kwargs['Policy'] = rolePolicy
     elif AWS_ROLE_POLICY is not None:
-        kwargs.update({'Policy': AWS_ROLE_POLICY})
+        kwargs['Policy'] = AWS_ROLE_POLICY
     if kwargs and not AWS_ACCESS_KEY_ID:
 
-        if not AWS_ACCESS_KEY_ID:
-            sts_client = boto3.client('sts', config=config, verify=VERIFY_CERTIFICATE,
-                                      region_name=AWS_DEFAULT_REGION)
-            sts_response = sts_client.assume_role(**kwargs)
-            if region is not None:
-                client = boto3.client(
-                    service_name=service,
-                    region_name=region,
-                    aws_access_key_id=sts_response['Credentials']['AccessKeyId'],
-                    aws_secret_access_key=sts_response['Credentials']['SecretAccessKey'],
-                    aws_session_token=sts_response['Credentials']['SessionToken'],
-                    verify=VERIFY_CERTIFICATE,
-                    config=config
-                )
-            else:
-                client = boto3.client(
-                    service_name=service,
-                    region_name=AWS_DEFAULT_REGION,
-                    aws_access_key_id=sts_response['Credentials']['AccessKeyId'],
-                    aws_secret_access_key=sts_response['Credentials']['SecretAccessKey'],
-                    aws_session_token=sts_response['Credentials']['SessionToken'],
-                    verify=VERIFY_CERTIFICATE,
-                    config=config
-                )
+        sts_client = boto3.client('sts', config=config, verify=VERIFY_CERTIFICATE,
+                                  region_name=AWS_DEFAULT_REGION)
+        sts_response = sts_client.assume_role(**kwargs)
+        return (
+            boto3.client(
+                service_name=service,
+                region_name=region,
+                aws_access_key_id=sts_response['Credentials']['AccessKeyId'],
+                aws_secret_access_key=sts_response['Credentials'][
+                    'SecretAccessKey'
+                ],
+                aws_session_token=sts_response['Credentials']['SessionToken'],
+                verify=VERIFY_CERTIFICATE,
+                config=config,
+            )
+            if region is not None
+            else boto3.client(
+                service_name=service,
+                region_name=AWS_DEFAULT_REGION,
+                aws_access_key_id=sts_response['Credentials']['AccessKeyId'],
+                aws_secret_access_key=sts_response['Credentials'][
+                    'SecretAccessKey'
+                ],
+                aws_session_token=sts_response['Credentials']['SessionToken'],
+                verify=VERIFY_CERTIFICATE,
+                config=config,
+            )
+        )
+
     elif AWS_ACCESS_KEY_ID and AWS_ROLE_ARN:
         sts_client = boto3.client(
             service_name='sts',
@@ -106,7 +110,7 @@ def aws_session(service='athena', region=None, roleArn=None, roleSessionName=Non
             'RoleSessionName': AWS_ROLE_SESSION_NAME,
         })
         sts_response = sts_client.assume_role(**kwargs)
-        client = boto3.client(
+        return boto3.client(
             service_name=service,
             region_name=AWS_DEFAULT_REGION,
             aws_access_key_id=sts_response['Credentials']['AccessKeyId'],
@@ -115,9 +119,8 @@ def aws_session(service='athena', region=None, roleArn=None, roleSessionName=Non
             verify=VERIFY_CERTIFICATE,
             config=config
         )
-    else:
-        if region is not None:
-            client = boto3.client(
+    elif region is not None:
+        return boto3.client(
                 service_name=service,
                 region_name=region,
                 aws_access_key_id=AWS_ACCESS_KEY_ID,
@@ -125,8 +128,8 @@ def aws_session(service='athena', region=None, roleArn=None, roleSessionName=Non
                 verify=VERIFY_CERTIFICATE,
                 config=config
             )
-        else:
-            client = boto3.client(
+    else:
+        return boto3.client(
                 service_name=service,
                 region_name=AWS_DEFAULT_REGION,
                 aws_access_key_id=AWS_ACCESS_KEY_ID,
@@ -134,8 +137,6 @@ def aws_session(service='athena', region=None, roleArn=None, roleSessionName=Non
                 verify=VERIFY_CERTIFICATE,
                 config=config
             )
-
-    return client
 
 
 def start_query_execution_command(args):
@@ -145,27 +146,36 @@ def start_query_execution_command(args):
         roleSessionName=args.get('roleSessionName'),
         roleSessionDuration=args.get('roleSessionDuration'),
     )
-    data = []
     kwargs = {'QueryString': args.get('QueryString')}
     if args.get('ClientRequestToken') is not None:
-        kwargs.update({'ClientRequestToken': args.get('ClientRequestToken')})
+        kwargs['ClientRequestToken'] = args.get('ClientRequestToken')
     if args.get('Database') is not None:
-        kwargs.update({'QueryExecutionContext': {'Database': args.get('Database')}})
+        kwargs['QueryExecutionContext'] = {'Database': args.get('Database')}
     if args.get('OutputLocation') is not None:
-        kwargs.update({'ResultConfiguration': {'OutputLocation': args.get('OutputLocation')}})
+        kwargs['ResultConfiguration'] = {'OutputLocation': args.get('OutputLocation')}
     if args.get('EncryptionOption') is not None:
-        kwargs.update({'ResultConfiguration': {'EncryptionConfiguration': {'EncryptionOption': args.get('EncryptionOption')}}})
-    if args.get('KmsKey') is not None:
-        kwargs.update({'ResultConfiguration': {'EncryptionConfiguration': {'KmsKey': args.get('KmsKey')}}})
-    if args.get('WorkGroup') is not None:
-        kwargs.update({'WorkGroup': args.get('WorkGroup')})
+        kwargs['ResultConfiguration'] = {
+            'EncryptionConfiguration': {
+                'EncryptionOption': args.get('EncryptionOption')
+            }
+        }
 
+    if args.get('KmsKey') is not None:
+        kwargs['ResultConfiguration'] = {
+            'EncryptionConfiguration': {'KmsKey': args.get('KmsKey')}
+        }
+
+    if args.get('WorkGroup') is not None:
+        kwargs['WorkGroup'] = args.get('WorkGroup')
     response = client.start_query_execution(**kwargs)
 
-    data.append({
-        'QueryString': args.get('QueryString'),
-        'QueryExecutionId': response['QueryExecutionId']
-    })
+    data = [
+        {
+            'QueryString': args.get('QueryString'),
+            'QueryExecutionId': response['QueryExecutionId'],
+        }
+    ]
+
     ec = {'AWS.Athena.Query': data}
     human_readable = tableToMarkdown('AWS Athena Query', data)
     return_outputs(human_readable, ec)

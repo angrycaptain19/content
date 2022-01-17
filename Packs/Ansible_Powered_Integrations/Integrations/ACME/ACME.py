@@ -44,18 +44,16 @@ def buildHeaderChain(depth):
     list_tag = '* '
     htag = '#'
 
-    chain = list_tag * (bool(depth)) + htag * (depth + 1) + \
+    return list_tag * (bool(depth)) + htag * (depth + 1) + \
         ' value ' + (htag * (depth + 1) + '\n')
-    return chain
 
 
 def buildValueChain(key, value, depth):
     tab = "  "
     list_tag = '* '
 
-    chain = tab * (bool(depth - 1)) + list_tag + \
+    return tab * (bool(depth - 1)) + list_tag + \
         str(key) + ": " + str(value) + "\n"
-    return chain
 
 
 def addHeader(value, depth):

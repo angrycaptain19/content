@@ -92,13 +92,12 @@ def make_upper(string):
         Uppercased string (or original string if it didn't match the criteria).
     """
 
-    if isinstance(string, str):
-        if string.casefold() in ALWAYS_UPPER_CASE:
-            return string.upper()
-        elif string.casefold() == 'ssdeep':  # special case
-            return 'SSDeep'
-        else:
-            return string
+    if not isinstance(string, str):
+        return string
+    if string.casefold() in ALWAYS_UPPER_CASE:
+        return string.upper()
+    elif string.casefold() == 'ssdeep':  # special case
+        return 'SSDeep'
     else:
         return string
 
@@ -141,27 +140,24 @@ def make_singular(word):
         return word
 
     word_as_lower = word.casefold()
-    # Not a plural
     if not word_as_lower.endswith('s'):
         return word
-    # Word ends in 's' and is therefore possibly plural
+    es_endings = ('sses', 'shes', 'ches', 'xes', 'zes')
+    if word_as_lower.endswith(es_endings):
+        # Then the word was pluralized by adding 'es'
+        return word[:-2]
+    elif word_as_lower.endswith('ss'):
+        # Then it's probably not a plural, e.g. 'assess' or 'process'
+        return word
+    elif len(word) <= 2:
+        # Then it's probably not a plural, e.g. 'OS'
+        return word
+    elif word_as_lower.endswith('sis') or word_as_lower.endswith('us'):
+        # Then it's probably singular like 'analysis' and 'cactus' and 'focus'
+        return word
     else:
-        es_endings = ('sses', 'shes', 'ches', 'xes', 'zes')
-        if word_as_lower.endswith(es_endings):
-            # Then the word was pluralized by adding 'es'
-            return word[:-2]
-        elif word_as_lower.endswith('ss'):
-            # Then it's probably not a plural, e.g. 'assess' or 'process'
-            return word
-        elif len(word) <= 2:
-            # Then it's probably not a plural, e.g. 'OS'
-            return word
-        elif word_as_lower.endswith('sis') or word_as_lower.endswith('us'):
-            # Then it's probably singular like 'analysis' and 'cactus' and 'focus'
-            return word
-        else:
-            # Assume regular noun pluralization of adding an 's'
-            return word[:-1]
+        # Assume regular noun pluralization of adding an 's'
+        return word[:-1]
 
 
 def travel_object(obj, key_functions=[], val_functions=[]):
@@ -189,7 +185,7 @@ def travel_object(obj, key_functions=[], val_functions=[]):
             new_key = key
             for key_func in key_functions:
                 new_key = key_func(new_key)
-            if isinstance(val, dict) or isinstance(val, list):
+            if isinstance(val, (dict, list)):
                 new_val = travel_object(val, key_functions=key_functions, val_functions=val_functions)
             else:
                 new_val = val
@@ -236,7 +232,7 @@ def generate_dbotscore(response):
         indicator = hashes.get('sha256', hashes.get('sha1', hashes.get('md5')))
     else:
         indicator = main_object.get('url')
-    dbot_score = {
+    return {
         "DBotScore": {
             "Indicator": indicator,
             "Type": submission_type,
@@ -244,7 +240,6 @@ def generate_dbotscore(response):
             "Score": THREAT_TEXT_TO_DBOTSCORE.get(threat_text, 0)
         }
     }
-    return dbot_score
 
 
 def add_malicious_key(entity, verdict):
@@ -295,7 +290,7 @@ def ec_file(main_object):
     ssdeep = hashes.get('ssdeep')
     ext = main_object.get('info', {}).get('ext')
 
-    file_ec = {
+    return {
         'File': {
             'Name': name,
             'MD5': md5,
@@ -305,7 +300,6 @@ def ec_file(main_object):
             'Extension': ext
         }
     }
-    return file_ec
 
 
 def ec_url(main_object):
@@ -324,12 +318,11 @@ def ec_url(main_object):
 
     url = main_object.get('url')
 
-    url_ec = {
+    return {
         'URL': {
             'Data': url
         }
     }
-    return url_ec
 
 
 def ec_entity(response):
@@ -378,11 +371,7 @@ def taskid_from_url(anyrun_url):
 
     pattern = r'tasks/(.*?)/'
     match = re.search(pattern, anyrun_url)
-    if match:
-        task_id = match.groups()[0]
-    else:
-        task_id = None
-    return task_id
+    return match.groups()[0] if match else None
 
 
 def images_from_report(response):
@@ -734,8 +723,7 @@ def get_history(args={}):
 
     url_suffix = 'analysis/'
     params = args
-    response = http_request('GET', url_suffix=url_suffix, params=params)
-    return response
+    return http_request('GET', url_suffix=url_suffix, params=params)
 
 
 def get_history_command():
@@ -875,8 +863,7 @@ def run_analysis(args):
         else:
             args['env_version'] = '7'
         url_suffix = 'analysis'
-        response = http_request('POST', url_suffix, data=args, files=files)
-        return response
+        return http_request('POST', url_suffix, data=args, files=files)
     except ValueError:
         err_msg = 'Invalid entryID - File not found for the given entryID'
         return_error(err_msg)

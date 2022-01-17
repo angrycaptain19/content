@@ -46,8 +46,7 @@ def parse_resource_ids(resource_id):
     if resource_id is None:
         return None
     id_list = resource_id.replace(" ", "")
-    resourceIds = id_list.split(",")
-    return resourceIds
+    return id_list.split(",")
 
 
 def parse_tag_field(tags_str):
@@ -62,18 +61,17 @@ def parse_tag_field(tags_str):
             'Key': demisto.args().get('tag_key'),
             'Value': demisto.args().get('tag_value')
         })
-    else:
-        if tags_str is not None:
-            for f in tags_str.split(';'):
-                match = regex.match(f)
-                if match is None:
-                    demisto.log('could not parse field: %s' % (f,))
-                    continue
+    elif tags_str is not None:
+        for f in tags_str.split(';'):
+            match = regex.match(f)
+            if match is None:
+                demisto.log('could not parse field: %s' % (f,))
+                continue
 
-                tags.append({
-                    'Key': match.group(1),
-                    'Value': match.group(2)
-                })
+            tags.append({
+                'Key': match.group(1),
+                'Value': match.group(2)
+            })
 
     return tags
 
@@ -93,40 +91,44 @@ def aws_session(service='network-firewall', region=None, roleArn=None, roleSessi
         })
 
     if roleSessionDuration is not None:
-        kwargs.update({'DurationSeconds': int(roleSessionDuration)})
+        kwargs['DurationSeconds'] = int(roleSessionDuration)
     elif AWS_ROLE_SESSION_DURATION is not None:
-        kwargs.update({'DurationSeconds': int(AWS_ROLE_SESSION_DURATION)})
-
+        kwargs['DurationSeconds'] = int(AWS_ROLE_SESSION_DURATION)
     if rolePolicy is not None:
-        kwargs.update({'Policy': rolePolicy})
+        kwargs['Policy'] = rolePolicy
     elif AWS_ROLE_POLICY is not None:
-        kwargs.update({'Policy': AWS_ROLE_POLICY})
+        kwargs['Policy'] = AWS_ROLE_POLICY
     if kwargs and AWS_ACCESS_KEY_ID is None:
 
-        if AWS_ACCESS_KEY_ID is None:
-            sts_client = boto3.client('sts', config=config, verify=VERIFY_CERTIFICATE,
-                                      region_name=AWS_DEFAULT_REGION)
-            sts_response = sts_client.assume_role(**kwargs)
-            if region is not None:
-                client = boto3.client(
-                    service_name=service,
-                    region_name=region,
-                    aws_access_key_id=sts_response['Credentials']['AccessKeyId'],
-                    aws_secret_access_key=sts_response['Credentials']['SecretAccessKey'],
-                    aws_session_token=sts_response['Credentials']['SessionToken'],
-                    verify=VERIFY_CERTIFICATE,
-                    config=config
-                )
-            else:
-                client = boto3.client(
-                    service_name=service,
-                    region_name=AWS_DEFAULT_REGION,
-                    aws_access_key_id=sts_response['Credentials']['AccessKeyId'],
-                    aws_secret_access_key=sts_response['Credentials']['SecretAccessKey'],
-                    aws_session_token=sts_response['Credentials']['SessionToken'],
-                    verify=VERIFY_CERTIFICATE,
-                    config=config
-                )
+        sts_client = boto3.client('sts', config=config, verify=VERIFY_CERTIFICATE,
+                                  region_name=AWS_DEFAULT_REGION)
+        sts_response = sts_client.assume_role(**kwargs)
+        return (
+            boto3.client(
+                service_name=service,
+                region_name=region,
+                aws_access_key_id=sts_response['Credentials']['AccessKeyId'],
+                aws_secret_access_key=sts_response['Credentials'][
+                    'SecretAccessKey'
+                ],
+                aws_session_token=sts_response['Credentials']['SessionToken'],
+                verify=VERIFY_CERTIFICATE,
+                config=config,
+            )
+            if region is not None
+            else boto3.client(
+                service_name=service,
+                region_name=AWS_DEFAULT_REGION,
+                aws_access_key_id=sts_response['Credentials']['AccessKeyId'],
+                aws_secret_access_key=sts_response['Credentials'][
+                    'SecretAccessKey'
+                ],
+                aws_session_token=sts_response['Credentials']['SessionToken'],
+                verify=VERIFY_CERTIFICATE,
+                config=config,
+            )
+        )
+
     elif AWS_ACCESS_KEY_ID and AWS_ROLE_ARN:
         sts_client = boto3.client(
             service_name='sts',
@@ -140,7 +142,7 @@ def aws_session(service='network-firewall', region=None, roleArn=None, roleSessi
             'RoleSessionName': AWS_ROLE_SESSION_NAME,
         })
         sts_response = sts_client.assume_role(**kwargs)
-        client = boto3.client(
+        return boto3.client(
             service_name=service,
             region_name=AWS_DEFAULT_REGION,
             aws_access_key_id=sts_response['Credentials']['AccessKeyId'],
@@ -149,9 +151,8 @@ def aws_session(service='network-firewall', region=None, roleArn=None, roleSessi
             verify=VERIFY_CERTIFICATE,
             config=config
         )
-    else:
-        if region is not None:
-            client = boto3.client(
+    elif region is not None:
+        return boto3.client(
                 service_name=service,
                 region_name=region,
                 aws_access_key_id=AWS_ACCESS_KEY_ID,
@@ -159,8 +160,8 @@ def aws_session(service='network-firewall', region=None, roleArn=None, roleSessi
                 verify=VERIFY_CERTIFICATE,
                 config=config
             )
-        else:
-            client = boto3.client(
+    else:
+        return boto3.client(
                 service_name=service,
                 region_name=AWS_DEFAULT_REGION,
                 aws_access_key_id=AWS_ACCESS_KEY_ID,
@@ -168,8 +169,6 @@ def aws_session(service='network-firewall', region=None, roleArn=None, roleSessi
                 verify=VERIFY_CERTIFICATE,
                 config=config
             )
-
-    return client
 
 
 def associate_firewall_policy_command(args):
@@ -186,11 +185,12 @@ def associate_firewall_policy_command(args):
         "FirewallPolicyArn": args.get("firewall_policy_arn", None)
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.associate_firewall_policy(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -222,11 +222,12 @@ def associate_subnets_command(args):
         })
 
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.associate_subnets(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -262,11 +263,12 @@ def create_firewall_command(args):
             "SubnetId": subnet_id
         })
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.create_firewall(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -293,11 +295,12 @@ def create_firewall_policy_command(args):
 
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.create_firewall_policy(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -327,11 +330,12 @@ def create_rule_group_command(args):
 
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.create_rule_group(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -355,11 +359,12 @@ def delete_firewall_command(args):
         "FirewallArn": args.get("firewall_arn", None)
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.delete_firewall(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -383,11 +388,12 @@ def delete_firewall_policy_command(args):
         "FirewallPolicyArn": args.get("firewall_policy_arn", None)
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.delete_firewall_policy(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -410,11 +416,12 @@ def delete_resource_policy_command(args):
         "ResourceArn": args.get("resource_arn", None)
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.delete_resource_policy(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -438,11 +445,12 @@ def delete_rule_group_command(args):
         "Type": args.get("type", None)
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.delete_rule_group(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -466,11 +474,12 @@ def describe_firewall_command(args):
         "FirewallArn": args.get("firewall_arn", None)
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.describe_firewall(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -494,11 +503,12 @@ def describe_firewall_policy_command(args):
         "FirewallPolicyArn": args.get("firewall_policy_arn", None)
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.describe_firewall_policy(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -522,11 +532,12 @@ def describe_logging_configuration_command(args):
         "FirewallName": args.get("firewall_name", None)
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.describe_logging_configuration(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -549,11 +560,12 @@ def describe_resource_policy_command(args):
         "ResourceArn": args.get("resource_arn", None)
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.describe_resource_policy(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -577,11 +589,12 @@ def describe_rule_group_command(args):
         "Type": args.get("type", None)
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.describe_rule_group(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -607,11 +620,12 @@ def disassociate_subnets_command(args):
         "SubnetIds": parse_resource_ids(args.get("subnet_ids", ""))
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.disassociate_subnets(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -635,11 +649,12 @@ def list_firewall_policies_command(args):
         "MaxResults": args.get("max_results", None),
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.list_firewall_policies(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -665,11 +680,12 @@ def list_firewalls_command(args):
 
     kwargs = remove_empty_elements(kwargs)
 
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
 
     response = client.list_firewalls(**kwargs)
 
@@ -695,11 +711,12 @@ def list_rule_groups_command(args):
         "MaxResults": args.get("max_results",None)
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.list_rule_groups(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -723,11 +740,12 @@ def list_tags_for_resource_command(args):
         "ResourceArn": args.get("resource_arn", None)
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.list_tags_for_resource(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -750,11 +768,12 @@ def put_resource_policy_command(args):
         "Policy": args.get("policy", None)
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.put_resource_policy(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -778,11 +797,12 @@ def tag_resource_command(args):
 
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.tag_resource(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -805,11 +825,12 @@ def untag_resource_command(args):
         "TagKeys": parse_resource_ids(args.get("tag_keys", ""))
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.untag_resource(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -831,14 +852,16 @@ def update_firewall_delete_protection_command(args):
         "UpdateToken": args.get("update_token", None),
         "FirewallArn": args.get("firewall_arn", None),
         "FirewallName": args.get("firewall_name", None),
-        "DeleteProtection": True if args.get("delete_protection", "") == "True" else False
+        "DeleteProtection": args.get("delete_protection", "") == "True",
     }
+
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.update_firewall_delete_protection(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -864,11 +887,12 @@ def update_firewall_description_command(args):
         "Description": args.get("description", None)
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.update_firewall_description(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -896,11 +920,12 @@ def update_firewall_policy_command(args):
         "DryRun": True if args.get("dry_run", "") == "true" else None
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.update_firewall_policy(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -923,14 +948,19 @@ def update_firewall_policy_change_protection_command(args):
         "UpdateToken": args.get("update_token", None),
         "FirewallArn": args.get("firewall_arn", None),
         "FirewallName": args.get("firewall_name", None),
-        "FirewallPolicyChangeProtection": True if args.get("firewall_policy_change_protection", "") == "True" else False
+        "FirewallPolicyChangeProtection": args.get(
+            "firewall_policy_change_protection", ""
+        )
+        == "True",
     }
+
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.update_firewall_policy_change_protection(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -955,11 +985,12 @@ def update_logging_configuration_command(args):
         "LoggingConfiguration": safe_load_json(args.get("logging_configuration_json", None)),
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.update_logging_configuration(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -989,11 +1020,12 @@ def update_rule_group_command(args):
         "DryRun": True if args.get("dry_run", "") == "true" else None
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.update_rule_group(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)
@@ -1016,14 +1048,17 @@ def update_subnet_change_protection_command(args):
         "UpdateToken": args.get("update_token", None),
         "FirewallArn": args.get("firewall_arn", None),
         "FirewallName": args.get("firewall_name", None),
-        "SubnetChangeProtection": True if args.get("subnet_change_protection", "") == "True" else False
+        "SubnetChangeProtection": args.get("subnet_change_protection", "")
+        == "True",
     }
+
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.update_subnet_change_protection(**kwargs)
     response = json.dumps(response, default=myconverter)
     response = json.loads(response)

@@ -23,7 +23,7 @@ class TestARIA:
 
         ip4 = random.randint(0, 255) if ip4 is None else ip4
 
-        return f'{str(ip1)}.{str(ip2)}.{str(ip3)}.{str(ip4)}'
+        return f'{ip1}.{ip2}.{ip3}.{ip4}'
 
     def _mock_request(self, function_name, demisto_args):
         # mock data
@@ -103,40 +103,40 @@ class TestARIA:
         ip_addr_invalid = ['0', '11,22,33,44', TestARIA()._ip(111, 222, 333, 444), f'{TestARIA()._ip(1, 2, 3, 4)}|32',
                            f'{TestARIA()._ip(25, 89, 125, 255)}/33', TestARIA()._ip(10, 20, 30, 256)]
 
-        for i in range(0, len(ip_addr_invalid)):
+        for item in ip_addr_invalid:
             with pytest.raises(ValueError):
-                ARIA(self.sdso_url)._process_ip_address(ip=ip_addr_invalid[i])
+                ARIA(self.sdso_url)._process_ip_address(ip=item)
 
         # valid ip format input
         ip_addr_valid = ['1.2. 3.4', f'{TestARIA()._ip(1, 2, 3, 4)}  /32',
                          f'{TestARIA()._ip(255, 255, 255, 255)}/ 24', '10.20.30. 40']
 
-        for i in range(0, len(ip_addr_valid)):
-            res = ARIA(self.sdso_url)._process_ip_address(ip=ip_addr_valid[i])
+        for item_ in ip_addr_valid:
+            res = ARIA(self.sdso_url)._process_ip_address(ip=item_)
             # output IP addresses are in format like 1.2.3.4/32
-            if '/' in ip_addr_valid[i]:
-                assert res == ip_addr_valid[i].replace(' ', '')
+            if '/' in item_:
+                assert res == item_.replace(' ', '')
             else:
-                assert res == ip_addr_valid[i].replace(' ', '') + '/32'
+                assert res == item_.replace(' ', '') + '/32'
 
     def test_process_port_range(self):
         # invalid port range format raises ValeError Exception
         port_range_invalid = ['0-65536', '80_8000', '8000-80', '0, 8000 - 80', '0,1,2,']
 
-        for i in range(0, len(port_range_invalid)):
+        for item in port_range_invalid:
             with pytest.raises(ValueError):
-                ARIA(self.sdso_url)._process_port_range(port_range=port_range_invalid[i])
+                ARIA(self.sdso_url)._process_port_range(port_range=item)
 
         # valid port range input
         port_range_valid = ['0-65535', None, '80-8000', '80, 100 -8000', '100, 101-1024, 1025 - 65535']
 
-        for i in range(0, len(port_range_valid)):
-            res = ARIA(self.sdso_url)._process_port_range(port_range=port_range_valid[i])
-            if port_range_valid[i] is None:
+        for item_ in port_range_valid:
+            res = ARIA(self.sdso_url)._process_port_range(port_range=item_)
+            if item_ is None:
                 assert res == '0 - 65535'
             else:
                 # input port range will be changed in format like 80, 800 - 8000, ...
-                assert res == port_range_valid[i].replace(' ', '').replace(',', ', ').replace('-', ' - ')
+                assert res == item_.replace(' ', '').replace(',', ', ').replace('-', ' - ')
 
     def test_build_alert_instruction(self):
         # invalid alert parameter raises ValueError Exception
@@ -146,7 +146,7 @@ class TestARIA:
         aio_index = ['0', '1', '16', '15', '14']
         trigger_type = ['one-shot', 're-trigger-count', 're-trigger-timed-ms', 'two-shot', 're-trigger-timed-sec']
         trigger_value = ['1', '100', '1000', '8191', '8192']
-        for i in range(0, len(transport_type)):
+        for i in range(len(transport_type)):
             with pytest.raises(ValueError):
                 ARIA(self.sdso_url)._build_alert_instruction(transport_type={transport_type[i]},
                                                              tti_index={tti_index[i]}, aio_index={aio_index[i]},

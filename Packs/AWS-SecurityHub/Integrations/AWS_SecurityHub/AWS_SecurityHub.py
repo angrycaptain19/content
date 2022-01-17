@@ -23,8 +23,7 @@ def parse_resource_ids(resource_ids: str) -> list:
     if not resource_ids:
         return []
     id_list = resource_ids.replace(" ", '')
-    resourceIds = id_list.split(",")
-    return resourceIds
+    return id_list.split(",")
 
 
 def parse_tag_field(tags_str: str) -> list:
@@ -36,16 +35,13 @@ def parse_tag_field(tags_str: str) -> list:
     Returns:
         A list of dicts with the form {'Key': <key>, 'Value': <value>}
     """
-    tags = []
     regex = re.compile(
         r'key=([\w\d_:.-]+),value=([ /\w\d@_,.*-]+)', flags=re.I)
     regex_parse_result = regex.findall(tags_str)
-    for key, value in regex_parse_result:
-        tags.append({
+    return [{
             'Key': key,
             'Value': value
-        })
-    return tags
+        } for key, value in regex_parse_result]
 
 
 def generate_kwargs_for_get_findings(args: dict) -> dict:
@@ -472,7 +468,7 @@ def generate_kwargs_for_get_findings(args: dict) -> dict:
     if args.get('raw_json') is not None and not kwargs:
         del kwargs
         kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
+    elif args.get('raw_json') is not None:
         return_error("Please remove other arguments before using 'raw-json'.")
 
     kwargs['MaxResults'] = 100
@@ -493,12 +489,10 @@ def parse_filter_field(string_filters) -> dict:
     regex_parse_result = regex.findall(string_filters)
     if regex_parse_result:
         for name, value, comparison in regex_parse_result:
-            filters.update({
-                name: [{
+            filters[name] = [{
                     'Value': value,
                     'Comparison': comparison.upper()
                 }]
-            })
     else:
         demisto.info(f'could not parse filter: {string_filters}')
 
@@ -515,15 +509,13 @@ def severity_mapping(severity: int) -> int:
         Demisto severity
     """
     if 1 <= severity <= 30:
-        demisto_severity = 1
+        return 1
     elif 31 <= severity <= 70:
-        demisto_severity = 2
+        return 2
     elif 71 <= severity <= 100:
-        demisto_severity = 3
+        return 3
     else:
-        demisto_severity = 0
-
-    return demisto_severity
+        return 0
 
 
 def sh_severity_mapping(severity: str):
@@ -559,11 +551,12 @@ def enable_security_hub_command(client, args):
 
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.enable_security_hub(**kwargs)
     outputs = {'AWS-SecurityHub': response}
     del response['ResponseMetadata']
@@ -604,11 +597,12 @@ def list_members_command(client, args):
         'NextToken': args.get('next_token', None)
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.list_members(**kwargs)
     outputs = {'AWS-SecurityHub': response}
     del response['ResponseMetadata']
@@ -630,8 +624,7 @@ def update_findings_command(client, args):
         'RecordState': args.get('recordState'),
     }
     if args.get('note') and args.get('updatedBy'):
-        kwargs.update({'Note': {'Text': args.get('note'), 'UpdatedBy': args.get('updatedBy')}})
-
+        kwargs['Note'] = {'Text': args.get('note'), 'UpdatedBy': args.get('updatedBy')}
     response = client.update_findings(**kwargs)
     outputs = {'AWS-SecurityHub': response}
     del response['ResponseMetadata']
@@ -671,11 +664,12 @@ def batch_update_findings_command(client, args):
 
     }
     kwargs = remove_empty_elements(kwargs)
-    if args.get('raw_json') is not None and not kwargs:
-        del kwargs
-        kwargs = safe_load_json(args.get('raw_json', "{ }"))
-    elif args.get('raw_json') is not None and kwargs:
-        return_error("Please remove other arguments before using 'raw-json'.")
+    if args.get('raw_json') is not None:
+        if not kwargs:
+            del kwargs
+            kwargs = safe_load_json(args.get('raw_json', "{ }"))
+        else:
+            return_error("Please remove other arguments before using 'raw-json'.")
     response = client.batch_update_findings(**kwargs)
     outputs = {
         'AWS-SecurityHub.ProcessedFindings': response['ProcessedFindings']}

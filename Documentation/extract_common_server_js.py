@@ -3,8 +3,7 @@ import sys
 
 def readFile(filepath):
     with open(filepath, 'r') as f:
-        out = f.read()
-        return out
+        return f.read()
     return []
 
 

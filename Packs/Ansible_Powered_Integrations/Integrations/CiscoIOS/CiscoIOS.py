@@ -44,18 +44,16 @@ def buildHeaderChain(depth):
     list_tag = '* '
     htag = '#'
 
-    chain = list_tag * (bool(depth)) + htag * (depth + 1) + \
+    return list_tag * (bool(depth)) + htag * (depth + 1) + \
         ' value ' + (htag * (depth + 1) + '\n')
-    return chain
 
 
 def buildValueChain(key, value, depth):
     tab = "  "
     list_tag = '* '
 
-    chain = tab * (bool(depth - 1)) + list_tag + \
+    return tab * (bool(depth - 1)) + list_tag + \
         str(key) + ": " + str(value) + "\n"
-    return chain
 
 
 def addHeader(value, depth):
@@ -83,8 +81,7 @@ def generic_ansible(integration_name, command, args: Dict[str, Any]) -> CommandR
     if args.get('concurrency'):
         fork_count = cast(int, args.get('concurrency'))
 
-    inventory: Dict[str, dict] = {}
-    inventory['all'] = {}
+    inventory: Dict[str, dict] = {'all': {}}
     inventory['all']['hosts'] = {}
 
     if type(args['host']) is list:
@@ -95,9 +92,7 @@ def generic_ansible(integration_name, command, args: Dict[str, Any]) -> CommandR
         hosts = [host.strip() for host in args['host'].split(',')]
 
     for host in hosts:
-        new_host = {}
-        new_host['ansible_host'] = host
-
+        new_host = {'ansible_host': host}
         if ":" in host:
             address = host.split(':')
             new_host['ansible_port'] = address[1]
@@ -138,14 +133,11 @@ def generic_ansible(integration_name, command, args: Dict[str, Any]) -> CommandR
         new_host['ansible_become'] = 'yes'
         new_host['ansible_become_method'] = 'enable'
         inventory['all']['hosts'][host] = new_host
-    module_args = ""
-    # build module args list
-    for arg_key, arg_value in args.items():
-        # skip hardcoded host arg, as it doesn't related to module
-        if arg_key == 'host':
-            continue
-
-        module_args += "%s=\"%s\" " % (arg_key, arg_value)
+    module_args = "".join(
+        "%s=\"%s\" " % (arg_key, arg_value)
+        for arg_key, arg_value in args.items()
+        if arg_key != 'host'
+    )
 
     r = ansible_runner.run(inventory=inventory, host_pattern='all', module=command, quiet=True,
                            omit_event_data=True, ssh_key=sshkey, module_args=module_args, forks=fork_count)
@@ -166,11 +158,10 @@ def generic_ansible(integration_name, command, args: Dict[str, Any]) -> CommandR
             if each_host_event['event'] == "runner_on_ok":
                 if 'fact' in command:
                     result = result['ansible_facts']
+                elif result.get(command) is not None:
+                    result = result[command]
                 else:
-                    if result.get(command) is not None:
-                        result = result[command]
-                    else:
-                        result.pop("ansible_facts", None)
+                    result.pop("ansible_facts", None)
 
                 result = rec_ansible_key_strip(result)
 

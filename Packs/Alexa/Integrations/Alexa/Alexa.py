@@ -92,11 +92,7 @@ def test_module_command(use_ssl, proxies):
         rank = root.find(".//POPULARITY").attrib['TEXT']  # type: ignore
     except:  # noqa
         rank = alexa_fallback_command(domain, use_ssl, proxies)
-    if rank == '1':
-        result = 'ok'
-    else:
-        result = 'An error has occurred'
-    return result
+    return 'ok' if rank == '1' else 'An error has occurred'
 
 
 """EXECUTION BLOCK"""

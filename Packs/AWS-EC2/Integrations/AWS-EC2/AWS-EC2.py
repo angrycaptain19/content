@@ -57,8 +57,7 @@ class DatetimeEncoder(json.JSONEncoder):
 
 def parse_resource_ids(resource_id):
     id_list = resource_id.replace(" ", "")
-    resourceIds = id_list.split(",")
-    return resourceIds
+    return id_list.split(",")
 
 
 def multi_split(data):
@@ -87,18 +86,14 @@ def describe_regions_command(args, aws_client):
         role_session_name=args.get('roleSessionName'),
         role_session_duration=args.get('roleSessionDuration')
     )
-    data = []
     kwargs = {}
     if args.get('regionNames') is not None:
-        kwargs.update({'RegionNames': parse_resource_ids(args.get('regionNames'))})
-
+        kwargs['RegionNames'] = parse_resource_ids(args.get('regionNames'))
     response = client.describe_regions(**kwargs)
-    for region in response['Regions']:
-        data.append({
+    data = [{
             'Endpoint': region['Endpoint'],
             'RegionName': region['RegionName']
-        })
-
+        } for region in response['Regions']]
     ec = {'AWS.Regions(val.RegionName === obj.RegionName)': data}
     human_readable = tableToMarkdown('AWS Regions', data)
     return_outputs(human_readable, ec)
@@ -117,10 +112,9 @@ def describe_instances_command(args, aws_client):
     kwargs = {}
     output = []
     if args.get('filters') is not None:
-        kwargs.update({'Filters': parse_filter_field(args.get('filters'))})
+        kwargs['Filters'] = parse_filter_field(args.get('filters'))
     if args.get('instanceIds') is not None:
-        kwargs.update({'InstanceIds': parse_resource_ids(args.get('instanceIds'))})
-
+        kwargs['InstanceIds'] = parse_resource_ids(args.get('instanceIds'))
     response = client.describe_instances(**kwargs)
 
     if len(response['Reservations']) == 0:
@@ -177,14 +171,13 @@ def describe_images_command(args, aws_client):
     data = []
 
     if args.get('filters') is not None:
-        kwargs.update({'Filters': parse_filter_field(args.get('filters'))})
+        kwargs['Filters'] = parse_filter_field(args.get('filters'))
     if args.get('imageIds') is not None:
-        kwargs.update({'ImageIds': parse_resource_ids(args.get('imageIds'))})
+        kwargs['ImageIds'] = parse_resource_ids(args.get('imageIds'))
     if args.get('owners') is not None:
-        kwargs.update({'Owners': parse_resource_ids(args.get('owners'))})
+        kwargs['Owners'] = parse_resource_ids(args.get('owners'))
     if args.get('executableUsers') is not None:
-        kwargs.update({'ExecutableUsers': parse_resource_ids(args.get('executableUsers'))})
-
+        kwargs['ExecutableUsers'] = parse_resource_ids(args.get('executableUsers'))
     response = client.describe_images(**kwargs)
 
     if len(response['Images']) == 0:
@@ -235,12 +228,11 @@ def describe_addresses_command(args, aws_client):
     data = []
 
     if args.get('filters') is not None:
-        kwargs.update({'Filters': parse_filter_field(args.get('filters'))})
+        kwargs['Filters'] = parse_filter_field(args.get('filters'))
     if args.get('publicIps') is not None:
-        kwargs.update({'PublicIps': parse_resource_ids(args.get('publicIps'))})
+        kwargs['PublicIps'] = parse_resource_ids(args.get('publicIps'))
     if args.get('allocationIds') is not None:
-        kwargs.update({'AllocationIds': parse_resource_ids(args.get('allocationIds'))})
-
+        kwargs['AllocationIds'] = parse_resource_ids(args.get('allocationIds'))
     response = client.describe_addresses(**kwargs)
 
     if len(response['Addresses']) == 0:
@@ -289,13 +281,15 @@ def describe_snapshots_command(args, aws_client):
     data = []
 
     if args.get('filters') is not None:
-        kwargs.update({'Filters': parse_filter_field(args.get('filters'))})
+        kwargs['Filters'] = parse_filter_field(args.get('filters'))
     if args.get('ownerIds') is not None:
-        kwargs.update({'OwnerIds': parse_resource_ids(args.get('ownerIds'))})
+        kwargs['OwnerIds'] = parse_resource_ids(args.get('ownerIds'))
     if args.get('snapshotIds') is not None:
-        kwargs.update({'SnapshotIds': parse_resource_ids(args.get('snapshotIds'))})
+        kwargs['SnapshotIds'] = parse_resource_ids(args.get('snapshotIds'))
     if args.get('restorableByUserIds') is not None:
-        kwargs.update({'RestorableByUserIds': parse_resource_ids(args.get('restorableByUserIds'))})
+        kwargs['RestorableByUserIds'] = parse_resource_ids(
+            args.get('restorableByUserIds')
+        )
 
     response = client.describe_snapshots(**kwargs)
 
@@ -351,10 +345,9 @@ def describe_volumes_command(args, aws_client):
     data = []
 
     if args.get('filters') is not None:
-        kwargs.update({'Filters': parse_filter_field(args.get('filters'))})
+        kwargs['Filters'] = parse_filter_field(args.get('filters'))
     if args.get('volumeIds') is not None:
-        kwargs.update({'VolumeIds': parse_resource_ids(args.get('volumeIds'))})
-
+        kwargs['VolumeIds'] = parse_resource_ids(args.get('volumeIds'))
     response = client.describe_volumes(**kwargs)
 
     if len(response['Volumes']) == 0:
@@ -404,11 +397,13 @@ def describe_launch_templates_command(args, aws_client):
     data = []
 
     if args.get('filters') is not None:
-        kwargs.update({'Filters': parse_filter_field(args.get('filters'))})
+        kwargs['Filters'] = parse_filter_field(args.get('filters'))
     if args.get('launchTemplateIds') is not None:
-        kwargs.update({'LaunchTemplateIds': parse_resource_ids(args.get('launchTemplateIds'))})
+        kwargs['LaunchTemplateIds'] = parse_resource_ids(args.get('launchTemplateIds'))
     if args.get('launchTemplateNames') is not None:
-        kwargs.update({'LaunchTemplateNames': parse_resource_ids(args.get('launchTemplateNamess'))})
+        kwargs['LaunchTemplateNames'] = parse_resource_ids(
+            args.get('launchTemplateNamess')
+        )
 
     response = client.describe_launch_templates(**kwargs)
 
@@ -459,22 +454,17 @@ def describe_key_pairs_command(args, aws_client):
 
     obj = vars(client._client_config)
     kwargs = {}
-    data = []
-
     if args.get('filters') is not None:
-        kwargs.update({'Filters': parse_filter_field(args.get('filters'))})
+        kwargs['Filters'] = parse_filter_field(args.get('filters'))
     if args.get('keyNames') is not None:
-        kwargs.update({'KeyNames': parse_resource_ids(args.get('keyNames'))})
-
+        kwargs['KeyNames'] = parse_resource_ids(args.get('keyNames'))
     response = client.describe_key_pairs(**kwargs)
 
-    for key in response['KeyPairs']:
-        data.append({
+    data = [{
             'KeyFingerprint': key['KeyFingerprint'],
             'KeyName': key['KeyName'],
             'Region': obj['_user_provided_options']['region_name'],
-        })
-
+        } for key in response['KeyPairs']]
     ec = {'AWS.EC2.KeyPairs(val.KeyName === obj.KeyName)': data}
     human_readable = tableToMarkdown('AWS EC2 Key Pairs', data)
     return_outputs(human_readable, ec)
@@ -494,10 +484,9 @@ def describe_vpcs_command(args, aws_client):
     data = []
 
     if args.get('filters') is not None:
-        kwargs.update({'Filters': parse_filter_field(args.get('filters'))})
+        kwargs['Filters'] = parse_filter_field(args.get('filters'))
     if args.get('vpcIds') is not None:
-        kwargs.update({'VpcIds': parse_resource_ids(args.get('vpcIds'))})
-
+        kwargs['VpcIds'] = parse_resource_ids(args.get('vpcIds'))
     response = client.describe_vpcs(**kwargs)
 
     if len(response['Vpcs']) == 0:
@@ -546,10 +535,9 @@ def describe_subnets_command(args, aws_client):
     data = []
 
     if args.get('filters') is not None:
-        kwargs.update({'Filters': parse_filter_field(args.get('filters'))})
+        kwargs['Filters'] = parse_filter_field(args.get('filters'))
     if args.get('subnetIds') is not None:
-        kwargs.update({'SubnetIds': parse_resource_ids(args.get('subnetIds'))})
-
+        kwargs['SubnetIds'] = parse_resource_ids(args.get('subnetIds'))
     response = client.describe_subnets(**kwargs)
 
     if len(response['Subnets']) == 0:
@@ -599,12 +587,11 @@ def describe_security_groups_command(args, aws_client):
     data = []
 
     if args.get('filters') is not None:
-        kwargs.update({'Filters': parse_filter_field(args.get('filters'))})
+        kwargs['Filters'] = parse_filter_field(args.get('filters'))
     if args.get('groupIds') is not None:
-        kwargs.update({'GroupIds': parse_resource_ids(args.get('groupIds'))})
+        kwargs['GroupIds'] = parse_resource_ids(args.get('groupIds'))
     if args.get('groupNames') is not None:
-        kwargs.update({'GroupNames': parse_resource_ids(args.get('groupNames'))})
-
+        kwargs['GroupNames'] = parse_resource_ids(args.get('groupNames'))
     response = client.describe_security_groups(**kwargs)
 
     if len(response['SecurityGroups']) == 0:
@@ -674,14 +661,13 @@ def associate_address_command(args, aws_client):
     kwargs = {'AllocationId': args.get('allocationId')}
 
     if args.get('instanceId') is not None:
-        kwargs.update({'InstanceId': args.get('instanceId')})
+        kwargs['InstanceId'] = args.get('instanceId')
     if args.get('allowReassociation') is not None:
-        kwargs.update({'AllowReassociation': True if args.get('allowReassociation') == 'True' else False})
+        kwargs['AllowReassociation'] = args.get('allowReassociation') == 'True'
     if args.get('networkInterfaceId') is not None:
-        kwargs.update({'NetworkInterfaceId': args.get('networkInterfaceId')})
+        kwargs['NetworkInterfaceId'] = args.get('networkInterfaceId')
     if args.get('privateIpAddress') is not None:
-        kwargs.update({'PrivateIpAddress': args.get('privateIpAddress')})
-
+        kwargs['PrivateIpAddress'] = args.get('privateIpAddress')
     response = client.associate_address(**kwargs)
     data = ({
         'AllocationId': args.get('allocationId'),
@@ -706,14 +692,11 @@ def create_snapshot_command(args, aws_client):
     kwargs = {'VolumeId': args.get('volumeId')}
 
     if args.get('description') is not None:
-        kwargs.update({'Description': args.get('description')})
+        kwargs['Description'] = args.get('description')
     if args.get('tags') is not None:
-        kwargs.update({
-            'TagSpecifications': [{
+        kwargs['TagSpecifications'] = [{
                 'ResourceType': 'snapshot',
                 'Tags': parse_tag_field(args.get('tags'))}]
-        })
-
     response = client.create_snapshot(**kwargs)
 
     try:
@@ -735,10 +718,7 @@ def create_snapshot_command(args, aws_client):
 
     if 'Tags' in response:
         for tag in response['Tags']:
-            data.update({
-                tag['Key']: tag['Value']
-            })
-
+            data[tag['Key']] = tag['Value']
     try:
         output = json.dumps(response, cls=DatetimeEncoder)
         raw = json.loads(output)
@@ -779,10 +759,9 @@ def create_image_command(args, aws_client):
     }
 
     if args.get('description') is not None:
-        kwargs.update({'Description': args.get('description')})
+        kwargs['Description'] = args.get('description')
     if args.get('noReboot') is not None:
-        kwargs.update({'NoReboot': True if args.get('noReboot') == 'True' else False})
-
+        kwargs['NoReboot'] = args.get('noReboot') == 'True'
     response = client.create_image(**kwargs)
 
     data = ({
@@ -824,12 +803,11 @@ def modify_volume_command(args, aws_client):
     kwargs = {'VolumeId': args.get('volumeId')}
 
     if args.get('size') is not None:
-        kwargs.update({'Size': int(args.get('size'))})
+        kwargs['Size'] = int(args.get('size'))
     if args.get('volumeType') is not None:
-        kwargs.update({'VolumeType': args.get('volumeType')})
+        kwargs['VolumeType'] = args.get('volumeType')
     if args.get('iops') is not None:
-        kwargs.update({'Iops': int(args.get('iops'))})
-
+        kwargs['Iops'] = int(args.get('iops'))
     response = client.modify_volume(**kwargs)
     volumeModification = response['VolumeModification']
 
@@ -960,26 +938,23 @@ def create_volume_command(args, aws_client):
     kwargs = {'AvailabilityZone': args.get('availabilityZone')}
 
     if args.get('encrypted') is not None:
-        kwargs.update({'Encrypted': True if args.get('encrypted') == 'True' else False})
+        kwargs['Encrypted'] = args.get('encrypted') == 'True'
     if args.get('iops') is not None:
-        kwargs.update({'Iops': int(args.get('iops'))})
+        kwargs['Iops'] = int(args.get('iops'))
     if args.get('kmsKeyId') is not None:
-        kwargs.update({'KmsKeyId': args.get('kmsKeyId')})
+        kwargs['KmsKeyId'] = args.get('kmsKeyId')
     if args.get('size') is not None:
-        kwargs.update({'Size': int(args.get('size'))})
+        kwargs['Size'] = int(args.get('size'))
     if args.get('snapshotId') is not None:
-        kwargs.update({'SnapshotId': args.get('snapshotId')})
+        kwargs['SnapshotId'] = args.get('snapshotId')
     if args.get('volumeType') is not None:
-        kwargs.update({'VolumeType': args.get('volumeType')})
+        kwargs['VolumeType'] = args.get('volumeType')
     if args.get('kmsKeyId') is not None:
-        kwargs.update({'KmsKeyId': args.get('kmsKeyId')})
+        kwargs['KmsKeyId'] = args.get('kmsKeyId')
     if args.get('tags') is not None:
-        kwargs.update({
-            'TagSpecifications': [{
+        kwargs['TagSpecifications'] = [{
                 'ResourceType': 'volume',
                 'Tags': parse_tag_field(args.get('tags'))}]
-        })
-
     response = client.create_volume(**kwargs)
 
     try:
@@ -999,15 +974,12 @@ def create_volume_command(args, aws_client):
         'Region': obj['_user_provided_options']['region_name'],
     })
     if 'SnapshotId' in response:
-        data.update({'SnapshotId': response['SnapshotId']})
+        data['SnapshotId'] = response['SnapshotId']
     if 'KmsKeyId' in response:
-        data.update({'KmsKeyId': response['KmsKeyId']})
+        data['KmsKeyId'] = response['KmsKeyId']
     if 'Tags' in response:
         for tag in response['Tags']:
-            data.update({
-                tag['Key']: tag['Value']
-            })
-
+            data[tag['Key']] = tag['Value']
     ec = {'AWS.EC2.Volumes': data}
     human_readable = tableToMarkdown('AWS EC2 Volumes', data)
     return_outputs(human_readable, ec)
@@ -1040,8 +1012,7 @@ def attach_volume_command(args, aws_client):
         'VolumeId': response['VolumeId'],
     })
     if 'DeleteOnTermination' in response:
-        data.update({'DeleteOnTermination': response['DeleteOnTermination']})
-
+        data['DeleteOnTermination'] = response['DeleteOnTermination']
     ec = {'AWS.EC2.Volumes(val.VolumeId === obj.VolumeId).Attachments': data}
     human_readable = tableToMarkdown('AWS EC2 Volume Attachments', data)
     return_outputs(human_readable, ec)
@@ -1059,12 +1030,11 @@ def detach_volume_command(args, aws_client):
     kwargs = {'VolumeId': args.get('volumeId')}
 
     if args.get('force') is not None:
-        kwargs.update({'Force': True if args.get('force') == 'True' else False})
+        kwargs['Force'] = args.get('force') == 'True'
     if args.get('device') is not None:
-        kwargs.update({'Device': int(args.get('device'))})
+        kwargs['Device'] = int(args.get('device'))
     if args.get('instanceId') is not None:
-        kwargs.update({'InstanceId': args.get('instanceId')})
-
+        kwargs['InstanceId'] = args.get('instanceId')
     response = client.detach_volume(**kwargs)
     try:
         attach_time = datetime.strftime(response['AttachTime'], '%Y-%m-%dT%H:%M:%SZ')
@@ -1078,8 +1048,7 @@ def detach_volume_command(args, aws_client):
         'VolumeId': response['VolumeId'],
     })
     if 'DeleteOnTermination' in response:
-        data.update({'DeleteOnTermination': response['DeleteOnTermination']})
-
+        data['DeleteOnTermination'] = response['DeleteOnTermination']
     ec = {'AWS.EC2.Volumes(val.VolumeId === obj.VolumeId).Attachments': data}
     human_readable = tableToMarkdown('AWS EC2 Volume Attachments', data)
     return_outputs(human_readable, ec)

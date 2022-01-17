@@ -24,41 +24,33 @@ def aws_session(service='route53', region=None, roleArn=None, roleSessionName=No
         })
 
     if roleSessionDuration is not None:
-        kwargs.update({'DurationSeconds': int(roleSessionDuration)})
+        kwargs['DurationSeconds'] = int(roleSessionDuration)
     elif AWS_roleSessionDuration is not None:
-        kwargs.update({'DurationSeconds': int(AWS_roleSessionDuration)})
-
+        kwargs['DurationSeconds'] = int(AWS_roleSessionDuration)
     if rolePolicy is not None:
-        kwargs.update({'Policy': rolePolicy})
+        kwargs['Policy'] = rolePolicy
     elif AWS_rolePolicy is not None:
-        kwargs.update({'Policy': AWS_rolePolicy})
-
+        kwargs['Policy'] = AWS_rolePolicy
     if kwargs:
         sts_client = boto3.client('sts')
         sts_response = sts_client.assume_role(**kwargs)
-        if region is not None:
-            client = boto3.client(
+        return boto3.client(
                 service_name=service,
                 region_name=region,
                 aws_access_key_id=sts_response['Credentials']['AccessKeyId'],
                 aws_secret_access_key=sts_response['Credentials']['SecretAccessKey'],
                 aws_session_token=sts_response['Credentials']['SessionToken']
-            )
-        else:
-            client = boto3.client(
+            ) if region is not None else boto3.client(
                 service_name=service,
                 region_name=AWS_DEFAULT_REGION,
                 aws_access_key_id=sts_response['Credentials']['AccessKeyId'],
                 aws_secret_access_key=sts_response['Credentials']['SecretAccessKey'],
                 aws_session_token=sts_response['Credentials']['SessionToken']
             )
+    elif region is not None:
+        return boto3.client(service_name=service, region_name=region)
     else:
-        if region is not None:
-            client = boto3.client(service_name=service, region_name=region)
-        else:
-            client = boto3.client(service_name=service, region_name=AWS_DEFAULT_REGION)
-
-    return client
+        return boto3.client(service_name=service, region_name=AWS_DEFAULT_REGION)
 
 
 class DatetimeEncoder(json.JSONEncoder):
@@ -223,14 +215,12 @@ def list_hosted_zones(args):
             roleSessionName=args.get('roleSessionName'),
             roleSessionDuration=args.get('roleSessionDuration'),
         )
-        data = []
         response = client.list_hosted_zones()
-        for hostedzone in response['HostedZones']:
-            data.append({
+        data = [{
                 'Name': hostedzone['Name'],
                 'Id': hostedzone['Id'],
                 'ResourceRecordSetCount': hostedzone['ResourceRecordSetCount'],
-            })
+            } for hostedzone in response['HostedZones']]
         output = json.dumps(response['HostedZones'], cls=DatetimeEncoder)
         raw = json.loads(output)
         ec = {'AWS.Route53.HostedZones': raw}
@@ -250,22 +240,19 @@ def list_resource_record_sets(args):
 
         kwargs = {'HostedZoneId': args.get('hostedZoneId')}
         if args.get('startRecordName') is not None:
-            kwargs.update({'StartRecordName': args.get('startRecordName')})
+            kwargs['StartRecordName'] = args.get('startRecordName')
         if args.get('startRecordType') is not None:
-            kwargs.update({'StartRecordType': args.get('startRecordType')})
+            kwargs['StartRecordType'] = args.get('startRecordType')
         if args.get('startRecordIdentifier') is not None:
-            kwargs.update({'StartRecordIdentifier': args.get('startRecordIdentifier')})
-
-        data = []
+            kwargs['StartRecordIdentifier'] = args.get('startRecordIdentifier')
         response = client.list_resource_record_sets(**kwargs)
         records = response['ResourceRecordSets']
-        for record in records:
-            data.append({
+        data = [{
                 'Name': record['Name'],
                 'Type': record['Type'],
                 'TTL': record['TTL'],
                 'ResourceRecords': record['ResourceRecords'][0]['Value']
-            })
+            } for record in records]
         output = json.dumps(response['ResourceRecordSets'], cls=DatetimeEncoder)
         raw = json.loads(output)
         ec = {'AWS.Route53.RecordSets': raw}
@@ -284,10 +271,9 @@ def waiter_resource_record_sets_changed(args):
         )
         kwargs = {'Id': args.get('id')}
         if args.get('waiterDelay') is not None:
-            kwargs.update({'WaiterConfig': {'Delay': int(args.get('waiterDelay'))}})
+            kwargs['WaiterConfig'] = {'Delay': int(args.get('waiterDelay'))}
         if args.get('waiterMaxAttempts') is not None:
-            kwargs.update({'WaiterConfig': {'MaxAttempts': int(args.get('waiterMaxAttempts'))}})
-
+            kwargs['WaiterConfig'] = {'MaxAttempts': int(args.get('waiterMaxAttempts'))}
         waiter = client.get_waiter('resource_record_sets_changed')
         waiter.wait(**kwargs)
         return "success"
@@ -309,8 +295,7 @@ def test_dns_answer(args):
             'RecordType': args.get('recordType'),
         }
         if args.get('resolverIP') is not None:
-            kwargs.update({'ResolverIP': args.get('resolverIP')})
-
+            kwargs['ResolverIP'] = args.get('resolverIP')
         response = client.test_dns_answer(**kwargs)
         data = ({
             'Nameserver': response['Nameserver'],

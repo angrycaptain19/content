@@ -44,11 +44,8 @@ class RCS:
     for being put into a NRDO action / rule.
     """
     def _parse_RET_drop(self, rcs):
-        if rcs is None:
+        if rcs is None or rcs == "":
             return None, None
-        elif rcs == "":
-            return None, None
-
         rcsp = re.match("^[(][)](.+)$", rcs)
         if rcsp is None:
             return None, rcs
@@ -366,11 +363,8 @@ class RCS:
         rcs = rcsp.group(1)
 
         while True:
-            if rcs is None:
+            if rcs is None or rcs == "":
                 break
-            elif rcs == "":
-                break
-
             while True:
                 rcsp = re.match(r"^all\..+$", rcs)
                 if rcsp is not None:
@@ -484,11 +478,8 @@ class RCS:
                 RDL.append(RD)
                 break
 
-            if rcs is None:
+            if rcs is None or rcs == "":
                 break
-            elif rcs == "":
-                break
-
             rcsp = re.match("^,(.*)$", rcs)
             if rcsp is None:
                 return None, None, "failure: RDL , obj (none)"
@@ -498,9 +489,8 @@ class RCS:
                 return None, None, "failure: RDL , (empty)"
             rcs = rcsp.group(1)
 
-        if rcs is not None:
-            if rcs != "":
-                return None, "", "failure: RCS ended-!empty"
+        if rcs is not None and rcs != "":
+            return None, "", "failure: RCS ended-!empty"
 
         if len(RDL) <= 0:
             return None, None, "failure: RDL empty"
@@ -523,8 +513,8 @@ class RCS:
         if rcsp is None:
             rcs = "Remediation@drop()${0}".format(rcs)
             rcsp = re.match("^Remediation@(.+)$", rcs)
-            if rcsp is None:
-                return None, rcs, "failure: RET failed insert drop()"
+        if rcsp is None:
+            return None, rcs, "failure: RET failed insert drop()"
 
         if rcsp.group(1) is None:
             return None, None, "failuure: RET obj none"
@@ -704,9 +694,8 @@ class RCS:
             return None, None, None, None, "failed: space character found in RCS"
 
         SDL, rcs_next, msg = self._parse_SDL(rcs)
-        if SDL is not None:
-            if len(SDL) <= 0:
-                return None, None, None, None, "failed: SDL returned but is empty (msg={0})".format(msg)
+        if SDL is not None and len(SDL) <= 0:
+            return None, None, None, None, "failed: SDL returned but is empty (msg={0})".format(msg)
         if rcs_next is None:
             return SDL, None, None, None, "failed: RCS invalid parse after SDL (none) (msg={0})".format(msg)
         elif rcs_next == "":
@@ -717,11 +706,8 @@ class RCS:
             return SDL, None, None, None, "failed: RET is none (msg={0})".format(msg)
         elif len(RET) <= 0:
             return SDL, None, None, None, "failed: RET is empty (msg={0})".format(msg)
-        elif rcs_next is None:
+        elif rcs_next is None or rcs_next == "":
             return SDL, RET, None, None, "failed: RCS invalid parse after RET (none) (msg={0})".format(msg)
-        elif rcs_next == "":
-            return SDL, RET, None, None, "failed: RCS invalid parse after RET (none) (msg={0})".format(msg)
-
         RDL, rcs_next, msg = self._parse_RDL(rcs_next)
         if RDL is None:
             return SDL, RET, None, None, "failed: RDL is none (msg={0})".format(msg)
@@ -758,10 +744,7 @@ class RCS:
     time is a valid RCS value, otherwise it returns false.
     """
     def valid(self):
-        if not self._valid(self.rcs):
-            return False
-
-        return True
+        return bool(self._valid(self.rcs))
 
     """
     Allows setting the RCS string to act on, this will only
@@ -769,13 +752,12 @@ class RCS:
     should use modify.
     """
     def set(self, rcs):
-        if self.rcs is None:
-            if not self._valid(rcs):
-                return False
-            self.rcs = rcs
-        else:
+        if self.rcs is not None:
             return False
 
+        if not self._valid(rcs):
+            return False
+        self.rcs = rcs
         return True
 
     """
@@ -895,9 +877,7 @@ class ARIA(object):
             # This is an ARIA PI Reaper production requirement
             raise ValueError('Trigger value(trigger_value) out of range! It must be in range [1, 8191]')
 
-        instruction = f'ALERT {transport_type} {tti_index} {aio_index} {trigger_type} {trigger_value}'
-
-        return instruction
+        return f'ALERT {transport_type} {tti_index} {aio_index} {trigger_type} {trigger_value}'
 
     @staticmethod
     def _process_port_range(port_range: str = None) -> str:
@@ -922,7 +902,7 @@ class ARIA(object):
 
         for port in split_port_range:
             if res:
-                res = res + ', '
+                res += ', '
 
             if '-' in port:
 
@@ -936,9 +916,9 @@ class ARIA(object):
                     raise ValueError('Wrong port range format!')
 
                 res += beg + ' - ' + end
+            elif int(port) < 0 or int(port) > 65535:
+                raise ValueError('Port must be in 0-65535!')
             else:
-                if int(port) < 0 or int(port) > 65535:
-                    raise ValueError('Port must be in 0-65535!')
                 res += port
 
         return res
@@ -975,8 +955,7 @@ class ARIA(object):
                 raise ValueError('Wrong IP format!')
         if len(ip_addr_split) != 4:
             raise ValueError('Wrong IP format!')
-        res = ip_addr + '/' + netmask
-        return res
+        return ip_addr + '/' + netmask
 
     @staticmethod
     def _parse_rcs(rcs):
@@ -1052,11 +1031,9 @@ class ARIA(object):
             'sia_list': sia_list
         }
 
-        rule_forward_spec = {
+        return {
             'selector': named_rule_distribution
         }
-
-        return rule_forward_spec
 
     def _wait_for_trid(self, trid: str) -> bool:
         """ Valid whether the request completed by trid
@@ -1145,7 +1122,7 @@ class ARIA(object):
             response_timestamp = response_json.get('timestamp')
             ep_res = endpoints
 
-        context = {
+        return {
             'Rule': {
                 'Name': rule_name,
                 'Definition': f'Remove {rule_name}',
@@ -1157,8 +1134,6 @@ class ARIA(object):
             },
             'Endpoints': ep_res
         }
-
-        return context
 
     def _do_request(self, data: dict, rule_name: str, rule: str, rcs: str = None) -> dict:
         """ Send a request to ARIA PI Reaper to create a rule
@@ -1178,8 +1153,6 @@ class ARIA(object):
         data['selector']['instance_id_type'] = 'instance-number'
         data['selector']['instance_id'] = '0'
 
-        instance_number = 10  # 10 total instances in ARIA PI Reaper
-
         command_state_str = 'Failure'
         response_timestamp = None
         endpoints = None
@@ -1190,12 +1163,12 @@ class ARIA(object):
         except requests.exceptions.RequestException:
             raise
 
-        failed_endpoints_index = []
-        success_endpoints_index = []
         if response and response.ok:
             response_json = response.json()
             endpoints = response_json.get('endpoints')
             response_timestamp = response_json.get('timestamp')
+            failed_endpoints_index = []
+            success_endpoints_index = []
             if endpoints and len(endpoints) > 0:
                 for ep_index, ep in enumerate(endpoints):
                     trid = ep.get('trid')
@@ -1209,16 +1182,15 @@ class ARIA(object):
                         failed_endpoints_index.append(ep_index)
 
             # no endpoints matches
-            if len(failed_endpoints_index) == 0 and len(success_endpoints_index) == 0:
+            if not failed_endpoints_index and not success_endpoints_index:
                 command_state_str = "Endpoint matching RCS not found!"
-            # rules are created successfully on all endpoints
-            elif len(success_endpoints_index) > 0 and len(failed_endpoints_index) == 0:
+            elif len(success_endpoints_index) > 0 and not failed_endpoints_index:
                 command_state_str = "Success"
-            # rules are not created successfully on part or all endpoints, should try to forward rules on
-            # different instance for the failed endpoints
             else:
                 # forward rule to each endpoints by AgentFQN
                 command_state_str = "Success"
+                instance_number = 10  # 10 total instances in ARIA PI Reaper
+
                 for ep_index in failed_endpoints_index:
                     ep = endpoints[ep_index]
                     AgentFQN = ep.get('AgentFQN')
@@ -1250,7 +1222,7 @@ class ARIA(object):
                     ep['completion'] = ep_state
                     ep['instance_number'] = i if ep_state else None
 
-        context = {
+        return {
             'Rule': {
                 'Name': rule_name,
                 'Definition': rule,
@@ -1262,8 +1234,6 @@ class ARIA(object):
             },
             'Endpoints': endpoints
         }
-
-        return context
 
     """SOAR API"""
     def block_conversation(self, src_ip: str, target_ip: str, rule_name: str, src_port: str = None,
@@ -2293,21 +2263,20 @@ def main():
 
         if cmd_func is None:
             raise NotImplementedError(f'Command "{command}" is not implemented.')
+        readable_output, ec = cmd_func(aria, demisto.args())
+        context_entry = list(ec.values())[0]
+
+        LOG(json.dumps(ec))
+
+        if context_entry['Status']['command_state'] == 'Success':
+            return_outputs(readable_output, ec)
+        elif context_entry['Status']['command_state'] == 'Failure':
+            LOG.print_log()
+            return_error(f'One or more endpoint(s) fail to create/remove rules. Please see {context_entry}')
         else:
-            readable_output, ec = cmd_func(aria, demisto.args())
-            context_entry = list(ec.values())[0]
-
-            LOG(json.dumps(ec))
-
-            if context_entry['Status']['command_state'] == 'Success':
-                return_outputs(readable_output, ec)
-            elif context_entry['Status']['command_state'] == 'Failure':
-                LOG.print_log()
-                return_error(f'One or more endpoint(s) fail to create/remove rules. Please see {context_entry}')
-            else:
-                return_error(f'Endpoint matching RCS not found! Please see {context_entry}')
+            return_error(f'Endpoint matching RCS not found! Please see {context_entry}')
 
 
 # python2 uses __builtin__ python3 uses builtins
-if __name__ == '__builtin__' or __name__ == 'builtins':
+if __name__ in ['__builtin__', 'builtins']:
     main()

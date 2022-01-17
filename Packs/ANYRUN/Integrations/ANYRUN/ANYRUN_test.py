@@ -125,6 +125,10 @@ class TestGenerateDBotScore(object):
 
 class TestTaskIDFromURL(object):
     def test_taskid_from_url(self):
-        url = 'https://www.madeup.com/madeup/tasks/'  # disable-secrets-detection
-        url += 'this-is-the-task-id/blah/&someotherstuff'
+        url = (
+            'https://www.madeup.com/madeup/tasks/'
+            + 'this-is-the-task-id/blah/&someotherstuff'
+        )
+
+
         assert taskid_from_url(url) == 'this-is-the-task-id'

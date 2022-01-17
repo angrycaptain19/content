@@ -40,14 +40,12 @@ MARKDOWN_DESCRIPTION_FUNCS = ["createEntry"]
 
 def read_json_file(file_path):
     with open(file_path, 'r') as f:
-        out = json.load(f)
-        return out
+        return json.load(f)
 
 
 def read_yml_file(filepath):
     with open(filepath, 'r') as f:
-        out = yaml.safe_load(f)
-        return out
+        return yaml.safe_load(f)
 
 
 def reformat_python_output(output, origin, language):
@@ -100,8 +98,7 @@ def create_js_documentation(path, origin, language):
         if (a.get("deprecated", None) is not None) or a.get("name", "") in JS_PRIVATE_FUNCS:
             continue
 
-        y = dict()
-        y["name"] = a.get("name", "")
+        y = {'name': a.get("name", "")}
         if y["name"] == "":
             logging.error("Error extracting function name for JS function with the following data:\n", a)
             is_error = True
@@ -193,7 +190,7 @@ def create_ps_documentation(path, origin, language):
     with open(path, 'r') as file:
         ps_script = file.read()
 
-    function_doc_list = list()
+    function_doc_list = []
     functions_list = re.findall(r'function\s([\w_]*)\s{\s*<#\s*(.*?)#>', ps_script, re.S)
 
     for function in functions_list:

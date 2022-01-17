@@ -68,12 +68,10 @@ def build_body_request_for_update_user(old_user_data, new_user_data):
         }
         operations.append(operation)
 
-    data = {
+    return {
         'schemas': [patchSchema],
         'Operations': operations,
     }
-
-    return data
 
 
 '''CLIENT CLASS'''
@@ -351,8 +349,7 @@ def get_error_details(res: Dict[str, Any]) -> str:
     :return: The parsed error details.
     :rtype: ``str``
     """
-    details = str(res.get('detail'))
-    return details
+    return str(res.get('detail'))
 
 
 class OutputContext:

@@ -45,10 +45,9 @@ def main() -> None:
             return_results(generic_ansible('ACME', 'acme_challenge_cert_helper', args, int_params, host_type))
         elif command == 'acme-inspect':
             return_results(generic_ansible('ACME', 'acme_inspect', args, int_params, host_type))
-    # Log exceptions and return errors
     except Exception as e:
         demisto.error(traceback.format_exc())  # print the traceback
-        return_error(f'Failed to execute {command} command.\nError:\n{str(e)}')
+        return_error(f'Failed to execute {command} command.\nError:\n{e}')
 
 
 # ENTRY POINT

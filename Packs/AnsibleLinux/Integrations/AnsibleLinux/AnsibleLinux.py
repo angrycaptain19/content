@@ -247,10 +247,9 @@ def main() -> None:
             return_results(generic_ansible('Linux', 'rpm_key', args, int_params, host_type))
         elif command == 'linux-get-url':
             return_results(generic_ansible('Linux', 'get_url', args, int_params, host_type))
-    # Log exceptions and return errors
     except Exception as e:
         demisto.error(traceback.format_exc())  # print the traceback
-        return_error(f'Failed to execute {command} command.\nError:\n{str(e)}')
+        return_error(f'Failed to execute {command} command.\nError:\n{e}')
 
 
 # ENTRY POINT

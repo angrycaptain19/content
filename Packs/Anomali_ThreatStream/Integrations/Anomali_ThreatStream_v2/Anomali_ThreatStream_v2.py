@@ -201,8 +201,7 @@ def get_ip_context(indicator, threshold):
     """
         Builds and returns dictionary that will be set to IP generic context.
     """
-    ip_context = {}
-    ip_context['ASN'] = indicator.get('asn', '')
+    ip_context = {'ASN': indicator.get('asn', '')}
     ip_context['Address'] = indicator.get('value', '')
     ip_context['Geo'] = {
         'Country': indicator.get('country', ''),
@@ -221,18 +220,15 @@ def get_domain_context(indicator, threshold):
     """
         Builds and returns dictionary that will be set to Domain generic context.
     """
-    domain_context = {}
-    whois_context = {}
-    domain_context['Name'] = indicator.get('value', '')
+    domain_context = {'Name': indicator.get('value', '')}
     domain_context['DNS'] = indicator.get('ip', '')
 
-    whois_context['CreationDate'] = indicator.get('created_ts', '')
+    whois_context = {'CreationDate': indicator.get('created_ts', '')}
     whois_context['UpdatedDate'] = indicator.get('modified_ts', '')
     meta = indicator.get('meta', None)
 
     if meta:
-        registrant = {}
-        registrant['Name'] = meta.get('registrant_name', '')
+        registrant = {'Name': meta.get('registrant_name', '')}
         registrant['Email'] = meta.get('registrant_email', '')
         registrant['Phone'] = meta.get('registrant_phone', '')
     whois_context['Registrant'] = registrant
@@ -250,8 +246,7 @@ def get_file_type(file_indicator):
     """
         The function gets a file indicator data and returns it's subtype.
     """
-    indicator_type = file_indicator.get('subtype', '')
-    return indicator_type
+    return file_indicator.get('subtype', '')
 
 
 def get_file_context(indicator, threshold):
@@ -260,9 +255,8 @@ def get_file_context(indicator, threshold):
     """
     indicator_type = get_file_type(indicator)
     indicator_value = indicator.get('value', '')
-    file_context = {}
-    if indicator_type:
-        file_context = {indicator_type: indicator_value}
+    file_context = {indicator_type: indicator_value} if indicator_type else {}
+
     indicator_tags = indicator.get('tags', [])
     if indicator_tags:
         file_context['Tags'] = [str(tag.get('name', '')) for tag in indicator_tags]
@@ -330,9 +324,7 @@ def parse_network_lists(network):
     tcp_list = parse_network_elem(network.get('tcp', [])[:10], 'Tcp')
     http_list = parse_network_elem(network.get('http', [])[:10], 'Http')
     https_list = parse_network_elem(network.get('https', [])[:10], 'Https')
-    network_result = udp_list + icmp_list + tcp_list + http_list + https_list + hosts
-
-    return network_result
+    return udp_list + icmp_list + tcp_list + http_list + https_list + hosts
 
 
 def parse_info(info):
@@ -340,7 +332,7 @@ def parse_info(info):
         Parses the info part that was received from sandbox report json
     """
     info.update(info.pop('machine', {}))
-    parsed_info = {
+    return {
         'Category': info.get('category', '').title(),
         'Started': info.get('started', ''),
         'Completed': info.get('ended', ''),
@@ -349,7 +341,6 @@ def parse_info(info):
         'VmID': info.get('id', '')
 
     }
-    return parsed_info
 
 
 def get_report_outputs(report, report_id):
@@ -396,10 +387,7 @@ def build_model_data(model, name, is_public, tlp, tags, intelligence, descriptio
     """
         Builds data dictionary that is used in Threat Model creation/update request.
     """
-    if model == 'tipreport':
-        description_field_name = 'body'
-    else:
-        description_field_name = 'description'
+    description_field_name = 'body' if model == 'tipreport' else 'description'
     data = {k: v for (k, v) in (('name', name), ('is_public', is_public), ('tlp', tlp),
                                 (description_field_name, description)) if v}
     if tags:
@@ -1022,7 +1010,7 @@ def main():
     CREDENTIALS['api_key'] = api_key
 
     reliability = params.get('integrationReliability')
-    reliability = reliability if reliability else DBotScoreReliability.B
+    reliability = reliability or DBotScoreReliability.B
 
     if DBotScoreReliability.is_valid_type(reliability):
         reliability = DBotScoreReliability.get_dbot_score_reliability_from_str(reliability)

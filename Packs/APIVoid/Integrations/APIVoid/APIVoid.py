@@ -33,99 +33,85 @@ class Client(BaseClient):
         # Use iprep & STATS as test parameter
         suffix = '/iprep/v1/pay-as-you-go/'
         api_params = {'key': self.apikey, 'stats': ''}
-        response = self._http_request(method='GET', url_suffix=suffix, params=api_params)
-        return response
+        return self._http_request(method='GET', url_suffix=suffix, params=api_params)
 
     def check_ip(self, ip):
 
         suffix = '/iprep/v1/pay-as-you-go/'
         api_params = {'key': self.apikey, 'ip': ip}
-        response = self._http_request(method='GET', url_suffix=suffix, params=api_params)
-        return response
+        return self._http_request(method='GET', url_suffix=suffix, params=api_params)
 
     def check_domain(self, domain):
 
         suffix = '/domainbl/v1/pay-as-you-go/'
         api_params = {'key': self.apikey, 'host': domain}
-        response = self._http_request(method='GET', url_suffix=suffix, params=api_params)
-        return response
+        return self._http_request(method='GET', url_suffix=suffix, params=api_params)
 
     def check_url(self, url):
 
         suffix = '/urlrep/v1/pay-as-you-go/'
         api_params = {'key': self.apikey, 'url': url}
-        response = self._http_request(method='GET', url_suffix=suffix, params=api_params)
-        return response
+        return self._http_request(method='GET', url_suffix=suffix, params=api_params)
 
     def check_dns(self, host, dns_type):
 
         suffix = '/dnslookup/v1/pay-as-you-go/'
         api_params = {'key': self.apikey, 'host': host, 'action': f'dns-{dns_type.lower()}'}
-        response = self._http_request(method='GET', url_suffix=suffix, params=api_params)
-        return response
+        return self._http_request(method='GET', url_suffix=suffix, params=api_params)
 
     def check_ssl(self, host):
 
         suffix = '/sslinfo/v1/pay-as-you-go/'
         api_params = {'key': self.apikey, 'host': host}
-        response = self._http_request(method='GET', url_suffix=suffix, params=api_params)
-        return response
+        return self._http_request(method='GET', url_suffix=suffix, params=api_params)
 
     def check_email_address(self, email):
 
         suffix = '/emailverify/v1/pay-as-you-go/'
         api_params = {'key': self.apikey, 'email': email}
-        response = self._http_request(method='GET', url_suffix=suffix, params=api_params)
-        return response
+        return self._http_request(method='GET', url_suffix=suffix, params=api_params)
 
     def check_threatlog(self, host):
 
         suffix = '/threatlog/v1/pay-as-you-go/'
         api_params = {'key': self.apikey, 'host': host}
-        response = self._http_request(method='GET', url_suffix=suffix, params=api_params)
-        return response
+        return self._http_request(method='GET', url_suffix=suffix, params=api_params)
 
     def check_parked_domain(self, domain):
 
         suffix = '/parkeddomain/v1/pay-as-you-go/'
         api_params = {'key': self.apikey, 'host': domain}
-        response = self._http_request(method='GET', url_suffix=suffix, params=api_params)
-        return response
+        return self._http_request(method='GET', url_suffix=suffix, params=api_params)
 
     def check_domain_age(self, domain):
 
         suffix = '/domainage/v1/pay-as-you-go/'
         api_params = {'key': self.apikey, 'host': domain}
-        response = self._http_request(method='GET', url_suffix=suffix, params=api_params)
-        return response
+        return self._http_request(method='GET', url_suffix=suffix, params=api_params)
 
     def screenshot(self, url):
 
         suffix = '/screenshot/v1/pay-as-you-go/'
         api_params = {'key': self.apikey, 'url': url}
-        response = self._http_request(method='GET', url_suffix=suffix, params=api_params)
-        return response
+        return self._http_request(method='GET', url_suffix=suffix, params=api_params)
 
     def url_to_pdf(self, url):
 
         suffix = '/urltopdf/v1/pay-as-you-go/'
         api_params = {'key': self.apikey, 'url': url}
-        response = self._http_request(method='GET', url_suffix=suffix, params=api_params)
-        return response
+        return self._http_request(method='GET', url_suffix=suffix, params=api_params)
 
     def url_to_html(self, url):
 
         suffix = '/urltohtml/v1/pay-as-you-go/'
         api_params = {'key': self.apikey, 'url': url}
-        response = self._http_request(method='GET', url_suffix=suffix, params=api_params)
-        return response
+        return self._http_request(method='GET', url_suffix=suffix, params=api_params)
 
     def site_trust(self, host):
 
         suffix = '/sitetrust/v1/pay-as-you-go/'
         api_params = {'key': self.apikey, 'host': host}
-        response = self._http_request(method='GET', url_suffix=suffix, params=api_params)
-        return response
+        return self._http_request(method='GET', url_suffix=suffix, params=api_params)
 
 
 def indicator_context(client, indicator, indicator_context_path, indicator_value_field, engines, detections):
@@ -162,10 +148,7 @@ def test_module(client):
 
     result = client.test()
 
-    if result.get('success'):
-        return 'ok'
-    else:
-        return 'Test Failed: ' + str(result)
+    return 'ok' if result.get('success') else 'Test Failed: ' + str(result)
 
 
 def ip_command(client, args, reputation_only):
@@ -289,7 +272,6 @@ def dns_lookup_command(client, args):
         return_error("Command Failed: " + str(raw_response['error']))
 
     records = raw_response.get('data', {}).get('records', None)
-    entries = list()
     if records:
         md_data = copy.deepcopy(records)
         md_data['Host'] = host
@@ -302,14 +284,16 @@ def dns_lookup_command(client, args):
             'APIVoid.DNS(val.host && val.type && val.host == obj.host && val.type == obj.type)': records,
         }
         md = tableToMarkdown(f'APIVoid DNS-{dns_type} information for {host}:', md_data)
-        entries.append({
-            'Type': entryTypes['note'],
-            'ContentsFormat': formats['json'],
-            'Contents': ec,
-            'HumanReadable': md,
-            'ReadableContentsFormat': formats['markdown'],
-            'EntryContext': ec
-        })
+        entries = [
+            {
+                'Type': entryTypes['note'],
+                'ContentsFormat': formats['json'],
+                'Contents': ec,
+                'HumanReadable': md,
+                'ReadableContentsFormat': formats['markdown'],
+                'EntryContext': ec,
+            }
+        ]
 
         for item in records.get('items', []):
             item_type = item.get('type', dns_type)
@@ -608,9 +592,8 @@ def main():
         else:
             commands[command](client, args)
 
-    # Log exceptions
     except Exception as e:
-        return_error(f'Failed to execute {demisto.command()} command. Error: {str(e)}')
+        return_error(f'Failed to execute {demisto.command()} command. Error: {e}')
 
 
 if __name__ in ('__main__', '__builtin__', 'builtins'):

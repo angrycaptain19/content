@@ -44,18 +44,16 @@ def buildHeaderChain(depth):
     list_tag = '* '
     htag = '#'
 
-    chain = list_tag * (bool(depth)) + htag * (depth + 1) + \
+    return list_tag * (bool(depth)) + htag * (depth + 1) + \
         ' value ' + (htag * (depth + 1) + '\n')
-    return chain
 
 
 def buildValueChain(key, value, depth):
     tab = "  "
     list_tag = '* '
 
-    chain = tab * (bool(depth - 1)) + list_tag + \
+    return tab * (bool(depth - 1)) + list_tag + \
         str(key) + ": " + str(value) + "\n"
-    return chain
 
 
 def addHeader(value, depth):
@@ -83,21 +81,15 @@ def generic_ansible(integration_name, command, args: Dict[str, Any]) -> CommandR
     if args.get('concurrency'):
         fork_count = cast(int, args.get('concurrency'))
 
-    inventory: Dict[str, dict] = {}
-    inventory['all'] = {}
-    inventory['all']['hosts'] = {}
-
-    inventory['all']['hosts']['localhost'] = {}
+    inventory: Dict[str, dict] = {'all': {'hosts': {'localhost': {}}}}
     inventory['all']['hosts']['localhost']['ansible_connection'] = 'local'
 
-    module_args = ""
-    # build module args list
-    for arg_key, arg_value in args.items():
-        # skip hardcoded host arg, as it doesn't related to module
-        if arg_key == 'host':
-            continue
+    module_args = "".join(
+        "%s=\"%s\" " % (arg_key, arg_value)
+        for arg_key, arg_value in args.items()
+        if arg_key != 'host'
+    )
 
-        module_args += "%s=\"%s\" " % (arg_key, arg_value)
     # If this isn't host based, then all the integratation parms will be used as command args
     for arg_key, arg_value in demisto.params().items():
         module_args += "%s=\"%s\" " % (arg_key, arg_value)
@@ -121,11 +113,10 @@ def generic_ansible(integration_name, command, args: Dict[str, Any]) -> CommandR
             if each_host_event['event'] == "runner_on_ok":
                 if 'fact' in command:
                     result = result['ansible_facts']
+                elif result.get(command) is not None:
+                    result = result[command]
                 else:
-                    if result.get(command) is not None:
-                        result = result[command]
-                    else:
-                        result.pop("ansible_facts", None)
+                    result.pop("ansible_facts", None)
 
                 result = rec_ansible_key_strip(result)
 
@@ -230,10 +221,9 @@ def main() -> None:
             return_results(generic_ansible('azurenetworking', 'azure_rm_dnszone', demisto.args()))
         elif demisto.command() == 'azure-rm-dnszone-info':
             return_results(generic_ansible('azurenetworking', 'azure_rm_dnszone_info', demisto.args()))
-    # Log exceptions and return errors
     except Exception as e:
         demisto.error(traceback.format_exc())  # print the traceback
-        return_error(f'Failed to execute {demisto.command()} command.\nError:\n{str(e)}')
+        return_error(f'Failed to execute {demisto.command()} command.\nError:\n{e}')
 
 
 # ENTRY POINT

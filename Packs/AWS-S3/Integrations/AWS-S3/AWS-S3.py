@@ -44,29 +44,27 @@ def create_bucket_command(args, aws_client):
         role_session_name=args.get('roleSessionName'),
         role_session_duration=args.get('roleSessionDuration'),
     )
-    data = []
     kwargs = {'Bucket': args.get('bucket').lower()}
     if args.get('acl') is not None:
-        kwargs.update({'ACL': args.get('acl')})
+        kwargs['ACL'] = args.get('acl')
     if args.get('locationConstraint') is not None:
-        kwargs.update({'CreateBucketConfiguration': {'LocationConstraint': args.get('locationConstraint')}})
-    if args.get('grantFullControl') is not None:
-        kwargs.update({'GrantFullControl': args.get('grantFullControl')})
-    if args.get('grantRead') is not None:
-        kwargs.update({'GrantRead': args.get('grantRead')})
-    if args.get('grantReadACP') is not None:
-        kwargs.update({'GrantReadACP': args.get('grantReadACP')})
-    if args.get('grantWrite') is not None:
-        kwargs.update({'GrantWrite': args.get('grantWrite')})
-    if args.get('grantWriteACP') is not None:
-        kwargs.update({'GrantWriteACP': args.get('grantWriteACP')})
+        kwargs['CreateBucketConfiguration'] = {
+            'LocationConstraint': args.get('locationConstraint')
+        }
 
+    if args.get('grantFullControl') is not None:
+        kwargs['GrantFullControl'] = args.get('grantFullControl')
+    if args.get('grantRead') is not None:
+        kwargs['GrantRead'] = args.get('grantRead')
+    if args.get('grantReadACP') is not None:
+        kwargs['GrantReadACP'] = args.get('grantReadACP')
+    if args.get('grantWrite') is not None:
+        kwargs['GrantWrite'] = args.get('grantWrite')
+    if args.get('grantWriteACP') is not None:
+        kwargs['GrantWriteACP'] = args.get('grantWriteACP')
     response = client.create_bucket(**kwargs)
 
-    data.append({
-        'BucketName': args.get('bucket'),
-        'Location': response['Location']
-    })
+    data = [{'BucketName': args.get('bucket'), 'Location': response['Location']}]
     ec = {'AWS.S3.Buckets': data}
     human_readable = tableToMarkdown('AWS S3 Buckets', data)
     return_outputs(human_readable, ec)
@@ -94,13 +92,17 @@ def list_buckets_command(args, aws_client):
         role_session_name=args.get('roleSessionName'),
         role_session_duration=args.get('roleSessionDuration'),
     )
-    data = []
     response = client.list_buckets()
-    for bucket in response['Buckets']:
-        data.append({
+    data = [
+        {
             'BucketName': bucket['Name'],
-            'CreationDate': datetime.strftime(bucket['CreationDate'], '%Y-%m-%dT%H:%M:%S')
-        })
+            'CreationDate': datetime.strftime(
+                bucket['CreationDate'], '%Y-%m-%dT%H:%M:%S'
+            ),
+        }
+        for bucket in response['Buckets']
+    ]
+
     ec = {'AWS.S3.Buckets(val.BucketName === obj.BucketName)': data}
     human_readable = tableToMarkdown('AWS S3 Buckets', data)
     return_outputs(human_readable, ec)
@@ -114,12 +116,10 @@ def get_bucket_policy_command(args, aws_client):
         role_session_name=args.get('roleSessionName'),
         role_session_duration=args.get('roleSessionDuration'),
     )
-    data = []
     response = client.get_bucket_policy(Bucket=args.get('bucket').lower())
     policy = json.loads(response['Policy'])
     statements = policy['Statement']
-    for statement in statements:
-        data.append({
+    data = [{
             'BucketName': args.get('bucket'),
             'PolicyId': policy.get('Id'),
             'PolicyVersion': policy.get('Version'),
@@ -129,7 +129,7 @@ def get_bucket_policy_command(args, aws_client):
             'Resource': statement.get('Resource'),
             'Effect': statement.get('Effect'),
             'Json': response.get('Policy')
-        })
+        } for statement in statements]
     ec = {'AWS.S3.Buckets(val.BucketName === obj.BucketName).Policy': data}
     human_readable = tableToMarkdown('AWS S3 Bucket Policy', data)
     return_outputs(human_readable, ec)
@@ -148,9 +148,8 @@ def put_bucket_policy_command(args, aws_client):
         'Policy': args.get('policy')
     }
     if args.get('confirmRemoveSelfBucketAccess') is not None:
-        kwargs.update({'ConfirmRemoveSelfBucketAccess': True if args.get(
-            'confirmRemoveSelfBucketAccess') == 'True' else False})
-
+        kwargs['ConfirmRemoveSelfBucketAccess'] = args.get(
+            'confirmRemoveSelfBucketAccess') == 'True'
     response = client.put_bucket_policy(**kwargs)
     if response['ResponseMetadata']['HTTPStatusCode'] == 200:
         demisto.results('Successfully applied Bucket policy to {bucket} bucket'.format(bucket=args.get('BucketName')))
@@ -190,15 +189,19 @@ def list_objects_command(args, aws_client):
         role_session_name=args.get('roleSessionName'),
         role_session_duration=args.get('roleSessionDuration'),
     )
-    data = []
     response = client.list_objects(Bucket=args.get('bucket'))
     if response.get('Contents', None):
-        for key in response['Contents']:
-            data.append({
+        data = [
+            {
                 'Key': key['Key'],
                 'Size': convert_size(key['Size']),
-                'LastModified': datetime.strftime(key['LastModified'], '%Y-%m-%dT%H:%M:%S')
-            })
+                'LastModified': datetime.strftime(
+                    key['LastModified'], '%Y-%m-%dT%H:%M:%S'
+                ),
+            }
+            for key in response['Contents']
+        ]
+
         ec = {'AWS.S3.Buckets(val.BucketName === args.get("bucket")).Objects': data}
         human_readable = tableToMarkdown('AWS S3 Bucket Objects', data)
         return_outputs(human_readable, ec)
@@ -207,8 +210,7 @@ def list_objects_command(args, aws_client):
 
 
 def get_file_path(file_id):
-    filepath_result = demisto.getFilePath(file_id)
-    return filepath_result
+    return demisto.getFilePath(file_id)
 
 
 def upload_file_command(args, aws_client):

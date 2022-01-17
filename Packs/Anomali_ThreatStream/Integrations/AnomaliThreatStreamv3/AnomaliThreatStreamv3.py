@@ -169,7 +169,7 @@ class Client(BaseClient):
         """
         params = params or {}
         params.update(self.credentials)
-        res = super()._http_request(
+        return super()._http_request(
             method=method,
             url_suffix=url_suffix,
             headers=headers,
@@ -180,7 +180,6 @@ class Client(BaseClient):
             resp_type=resp_type,
             error_handler=self.error_handler,
         )
-        return res
 
     def error_handler(self, res: requests.Response):
         """
@@ -226,13 +225,12 @@ class DBotScoreCalculator:
         defined_threshold = threshold or self.instance_defined_thresholds.get(ioc_type)
         if defined_threshold:
             return Common.DBotScore.BAD if confidence >= defined_threshold else Common.DBotScore.GOOD
+        if confidence > DEFAULT_MALICIOUS_THRESHOLD:
+            return Common.DBotScore.BAD
+        if confidence > DEFAULT_SUSPICIOUS_THRESHOLD:
+            return Common.DBotScore.SUSPICIOUS
         else:
-            if confidence > DEFAULT_MALICIOUS_THRESHOLD:
-                return Common.DBotScore.BAD
-            if confidence > DEFAULT_SUSPICIOUS_THRESHOLD:
-                return Common.DBotScore.SUSPICIOUS
-            else:
-                return Common.DBotScore.GOOD
+            return Common.DBotScore.GOOD
 
 
 def find_worst_indicator(indicators):
@@ -337,9 +335,7 @@ def parse_network_lists(network):
     tcp_list = parse_network_elem(network.get('tcp', [])[:10], 'Tcp')
     http_list = parse_network_elem(network.get('http', [])[:10], 'Http')
     https_list = parse_network_elem(network.get('https', [])[:10], 'Https')
-    network_result = udp_list + icmp_list + tcp_list + http_list + https_list + hosts
-
-    return network_result
+    return udp_list + icmp_list + tcp_list + http_list + https_list + hosts
 
 
 def parse_info(info):
@@ -347,7 +343,7 @@ def parse_info(info):
         Parses the info part that was received from sandbox report json
     """
     info.update(info.pop('machine', {}))
-    parsed_info = {
+    return {
         'Category': info.get('category', '').title(),
         'Started': info.get('started', ''),
         'Completed': info.get('ended', ''),
@@ -356,7 +352,6 @@ def parse_info(info):
         'VmID': info.get('id', '')
 
     }
-    return parsed_info
 
 
 def parse_indicators_list(iocs_list):
@@ -383,10 +378,7 @@ def build_model_data(model, name, is_public, tlp, tags, intelligence, descriptio
     """
         Builds data dictionary that is used in Threat Model creation/update request.
     """
-    if model == 'tipreport':
-        description_field_name = 'body'
-    else:
-        description_field_name = 'description'
+    description_field_name = 'body' if model == 'tipreport' else 'description'
     data = {k: v for (k, v) in (('name', name), ('is_public', is_public), ('tlp', tlp),
                                 (description_field_name, description)) if v}
     if tags:
@@ -428,11 +420,11 @@ def test_module(client: Client):
 
 
 def ips_reputation_command(client: Client, score_calc: DBotScoreCalculator, ip, status, threshold=None):
-    results = []  # type: ignore
     ips = argToList(ip, ',')
-    for single_ip in ips:
-        results.append(get_ip_reputation(client, score_calc, single_ip, status, threshold))
-    return results
+    return [
+        get_ip_reputation(client, score_calc, single_ip, status, threshold)
+        for single_ip in ips
+    ]
 
 
 def get_ip_reputation(client: Client, score_calc: DBotScoreCalculator, ip, status, threshold=None):
@@ -498,11 +490,13 @@ def domains_reputation_command(client: Client, score_calc: DBotScoreCalculator, 
     """
         Wrapper function for get_domain_reputation.
     """
-    results = []  # type: ignore
     domains = argToList(domain, ',')
-    for single_domain in domains:
-        results.append(get_domain_reputation(client, score_calc, single_domain, status, threshold))
-    return results
+    return [
+        get_domain_reputation(
+            client, score_calc, single_domain, status, threshold
+        )
+        for single_domain in domains
+    ]
 
 
 def get_domain_reputation(client: Client, score_calc: DBotScoreCalculator, domain, status, threshold=None):
@@ -564,11 +558,11 @@ def files_reputation_command(client: Client, score_calc: DBotScoreCalculator, fi
     """
         Wrapper function for get_file_reputation.
     """
-    results = []
     files = argToList(file, ',')
-    for single_file in files:
-        results.append(get_file_reputation(client, score_calc, single_file, status, threshold))
-    return results
+    return [
+        get_file_reputation(client, score_calc, single_file, status, threshold)
+        for single_file in files
+    ]
 
 
 def get_file_reputation(client: Client, score_calc: DBotScoreCalculator, file, status, threshold=None):
@@ -636,11 +630,11 @@ def urls_reputation_command(client: Client, score_calc: DBotScoreCalculator, url
     """
         Wrapper function for get_url_reputation.
     """
-    results = []
     urls = argToList(url, ',')
-    for single_url in urls:
-        results.append(get_url_reputation(client, score_calc, single_url, status, threshold))
-    return results
+    return [
+        get_url_reputation(client, score_calc, single_url, status, threshold)
+        for single_url in urls
+    ]
 
 
 def get_url_reputation(client: Client, score_calc: DBotScoreCalculator, url, status, threshold=None):
@@ -1012,18 +1006,17 @@ def get_submission_status(client: Client, report_id, output_as_command_result=Tr
     verdict = report_info.get('verdict', '').title()
     platform = report_info.get('platform', '')
 
-    if output_as_command_result:
-        report_outputs = {'ReportID': report_id, 'Status': status, 'Platform': platform, 'Verdict': verdict}
-        readable_output = tableToMarkdown(f'The analysis status for id {report_id}', report_outputs)
-        return CommandResults(
-            outputs_prefix=f'{THREAT_STREAM}.Analysis',
-            outputs_key_field='ReportID',
-            outputs=report_outputs,
-            readable_output=readable_output,
-            raw_response=report_info,
-        )
-    else:
+    if not output_as_command_result:
         return status, verdict
+    report_outputs = {'ReportID': report_id, 'Status': status, 'Platform': platform, 'Verdict': verdict}
+    readable_output = tableToMarkdown(f'The analysis status for id {report_id}', report_outputs)
+    return CommandResults(
+        outputs_prefix=f'{THREAT_STREAM}.Analysis',
+        outputs_key_field='ReportID',
+        outputs=report_outputs,
+        readable_output=readable_output,
+        raw_response=report_info,
+    )
 
 
 def file_name_to_valid_string(file_name):
@@ -1233,7 +1226,7 @@ def main():
         return_results(result)
 
     except Exception as err:
-        return_error(f'{str(err)}, traceback {traceback.format_exc()}')
+        return_error(f'{err}, traceback {traceback.format_exc()}')
 
 
 # python2 uses __builtin__ python3 uses builtins

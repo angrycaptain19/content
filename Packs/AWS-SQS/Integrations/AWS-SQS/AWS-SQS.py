@@ -25,8 +25,7 @@ def get_queue_url(args, client):
     try:
         kwargs = {'QueueName': args.get('queueName')}
         if args.get('queueOwnerAWSAccountId'):
-            kwargs.update({'QueueOwnerAWSAccountId': args.get('queueOwnerAWSAccountId')})
-
+            kwargs['QueueOwnerAWSAccountId'] = args.get('queueOwnerAWSAccountId')
         response = client.get_queue_url(**kwargs)
         data = ({'QueueUrl': response['QueueUrl']})
 
@@ -39,14 +38,11 @@ def get_queue_url(args, client):
 
 def list_queues(args, client):
     try:
-        data = []
         kwargs = {}
         if args.get('queueNamePrefix') is not None:
-            kwargs.update({'QueueNamePrefix': args.get('queueNamePrefix')})
+            kwargs['QueueNamePrefix'] = args.get('queueNamePrefix')
         response = client.list_queues(**kwargs)
-        for queue in response['QueueUrls']:
-            data.append({'QueueUrl': queue})
-
+        data = [{'QueueUrl': queue} for queue in response['QueueUrls']]
         ec = {'AWS.SQS.Queues': data}
         return create_entry('AWS SQS Queues', data, ec)
 
@@ -61,22 +57,20 @@ def send_message(args, client):
             'MessageBody': args.get('messageBody'),
         }
         if args.get('delaySeconds') is not None:
-            kwargs.update({'DelaySeconds': int(args.get('delaySeconds'))})
+            kwargs['DelaySeconds'] = int(args.get('delaySeconds'))
         if args.get('messageGroupId') is not None:
-            kwargs.update({'MessageGroupId': int(args.get('messageGroupId'))})
-
+            kwargs['MessageGroupId'] = int(args.get('messageGroupId'))
         response = client.send_message(**kwargs)
         data = ({
             'QueueUrl': args.get('queueUrl'),
             'MessageId': response['MessageId'],
         })
         if 'SequenceNumber' in response:
-            data.update({'SequenceNumber': response['SequenceNumber']})
+            data['SequenceNumber'] = response['SequenceNumber']
         if 'MD5OfMessageBody' in response:
-            data.update({'MD5OfMessageBody': response['MD5OfMessageBody']})
+            data['MD5OfMessageBody'] = response['MD5OfMessageBody']
         if 'MD5OfMessageAttributes' in response:
-            data.update({'MD5OfMessageAttributes': response['MD5OfMessageAttributes']})
-
+            data['MD5OfMessageAttributes'] = response['MD5OfMessageAttributes']
         ec = {'AWS.SQS.Queues(obj.QueueUrl === val.QueueUrl).SentMessages': data}
         return create_entry('AWS SQS Queues sent messages', data, ec)
 
@@ -89,28 +83,33 @@ def create_queue(args, client):
         attributes = {}
         kwargs = {'QueueName': args.get('queueName')}
         if args.get('delaySeconds') is not None:
-            attributes.update({'DelaySeconds': args.get('delaySeconds')})
+            attributes['DelaySeconds'] = args.get('delaySeconds')
         if args.get('maximumMessageSize') is not None:
-            attributes.update({'MaximumMessageSize': args.get('maximumMessageSize')})
+            attributes['MaximumMessageSize'] = args.get('maximumMessageSize')
         if args.get('messageRetentionPeriod') is not None:
-            attributes.update({'MessageRetentionPeriod': args.get('messageRetentionPeriod')})
+            attributes['MessageRetentionPeriod'] = args.get('messageRetentionPeriod')
         if args.get('receiveMessageWaitTimeSeconds') is not None:
-            attributes.update({'ReceiveMessageWaitTimeSeconds': args.get('receiveMessageWaitTimeSeconds')})
-        if args.get('visibilityTimeout') is not None:
-            attributes.update({'VisibilityTimeout': int(args.get('visibilityTimeout'))})
-        if args.get('kmsDataKeyReusePeriodSeconds') is not None:
-            attributes.update({'KmsDataKeyReusePeriodSeconds': args.get('kmsDataKeyReusePeriodSeconds')})
-        if args.get('kmsMasterKeyId') is not None:
-            attributes.update({'KmsMasterKeyId': args.get('kmsMasterKeyId')})
-        if args.get('policy') is not None:
-            attributes.update({'Policy': args.get('policy')})
-        if args.get('fifoQueue') is not None:
-            attributes.update({'FifoQueue': args.get('fifoQueue')})
-        if args.get('contentBasedDeduplication') is not None:
-            attributes.update({'ContentBasedDeduplication': args.get('contentBasedDeduplication')})
-        if attributes:
-            kwargs.update({'Attributes': attributes})
+            attributes['ReceiveMessageWaitTimeSeconds'] = args.get(
+                'receiveMessageWaitTimeSeconds'
+            )
 
+        if args.get('visibilityTimeout') is not None:
+            attributes['VisibilityTimeout'] = int(args.get('visibilityTimeout'))
+        if args.get('kmsDataKeyReusePeriodSeconds') is not None:
+            attributes['KmsDataKeyReusePeriodSeconds'] = args.get(
+                'kmsDataKeyReusePeriodSeconds'
+            )
+
+        if args.get('kmsMasterKeyId') is not None:
+            attributes['KmsMasterKeyId'] = args.get('kmsMasterKeyId')
+        if args.get('policy') is not None:
+            attributes['Policy'] = args.get('policy')
+        if args.get('fifoQueue') is not None:
+            attributes['FifoQueue'] = args.get('fifoQueue')
+        if args.get('contentBasedDeduplication') is not None:
+            attributes['ContentBasedDeduplication'] = args.get('contentBasedDeduplication')
+        if attributes:
+            kwargs['Attributes'] = attributes
         response = client.create_queue(**kwargs)
         data = ({'QueueUrl': response['QueueUrl']})
         ec = {'AWS.SQS.Queues': data}
@@ -141,10 +140,10 @@ def purge_queue(args, client):
 
 
 def parse_incident_from_finding(message):
-    incident = {}
-    incident['name'] = "SQS MessageId: " + message["MessageId"]
-    incident['rawJSON'] = json.dumps(message)
-    return incident
+    return {
+        'name': "SQS MessageId: " + message["MessageId"],
+        'rawJSON': json.dumps(message),
+    }
 
 
 def fetch_incidents(aws_client, aws_queue_url):

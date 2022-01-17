@@ -72,11 +72,11 @@ class Client(BaseClient):
                                         params=params)
         except DemistoException as e:
             if hasattr(e.res, 'status_code'):
-                if e.res.status_code == 404:
-                    result = 404
-                elif e.res.status_code == 400:
+                if e.res.status_code == 400:
                     demisto.debug(f'{e.res.text} response received from server when trying to get api:{e.res.url}')
                     raise Exception(f'The command could not be execute: {argument} is invalid.')
+                elif e.res.status_code == 404:
+                    result = 404
                 else:
                     raise
             else:
@@ -711,7 +711,7 @@ def main():
     default_threshold = int(params.get('default_threshold', 2))
     token = params.get('api_token')
     reliability = params.get('integrationReliability')
-    reliability = reliability if reliability else DBotScoreReliability.C
+    reliability = reliability or DBotScoreReliability.C
 
     if DBotScoreReliability.is_valid_type(reliability):
         reliability = DBotScoreReliability.get_dbot_score_reliability_from_str(reliability)

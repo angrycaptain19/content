@@ -277,10 +277,11 @@ def do_mute_deception_host_command(client, args):
             and 'rescode' in res_json:
 
         out_result = {
-            'IsMute': True if 0 == res_json['rescode'] else False,
+            'IsMute': res_json['rescode'] == 0,
             'Host': str(host),
-            'DateTime': datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+            'DateTime': datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
         }
+
 
         results = CommandResults(
             outputs_prefix='Acalvio.MuteDeceptionHost',
@@ -310,10 +311,11 @@ def do_unmute_deception_host_command(client, args):
             and 'rescode' in res_json:
 
         out_result = {
-            'IsUnmute': True if 0 == res_json['rescode'] else False,
+            'IsUnmute': res_json['rescode'] == 0,
             'Host': str(host),
-            'DateTime': datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+            'DateTime': datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
         }
+
 
         results = CommandResults(
             outputs_prefix='Acalvio.UnmuteDeceptionHost',
@@ -343,10 +345,11 @@ def do_mute_deception_ep_command(client, args):
             and 'rescode' in res_json:
 
         out_result = {
-            'IsMute': True if 0 == res_json['rescode'] else False,
+            'IsMute': res_json['rescode'] == 0,
             'Endpoint': str(ep),
-            'DateTime': datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+            'DateTime': datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
         }
+
 
         results = CommandResults(
             outputs_prefix='Acalvio.MuteDeceptionEndpoint',
@@ -377,10 +380,11 @@ def do_unmute_deception_ep_command(client, args):
             and 'rescode' in res_json:
 
         out_result = {
-            'IsUnmute': True if 0 == res_json['rescode'] else False,
+            'IsUnmute': res_json['rescode'] == 0,
             'Endpoint': str(ep),
-            'DateTime': datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+            'DateTime': datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
         }
+
 
         results = CommandResults(
             outputs_prefix='Acalvio.UnmuteDeceptionEndpoint',
@@ -466,9 +470,10 @@ def main():
 
         return_results(result)
 
-    # Log exceptions
     except DemistoException as de:
-        return_error(message=f'Failed to execute \'{demisto.command()}\' command. Error: {str(de)}')
+        return_error(
+            message=f"Failed to execute '{demisto.command()}' command. Error: {de}"
+        )
 
 
 if __name__ in ('__main__', '__builtin__', 'builtins'):

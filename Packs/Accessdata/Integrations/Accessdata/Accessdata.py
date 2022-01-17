@@ -89,14 +89,11 @@ class Client:
             err_json = res.json()
             err_msg = ''
             if 'message' in err_json:
-                err_msg = err_msg + \
-                    'Error: {0}.\n'.format(err_json['message'])
+                err_msg += 'Error: {0}.\n'.format(err_json['message'])
             elif 'http_response' in err_json:
-                err_msg = err_msg + \
-                    'Error: {0}.\n'.format(err_json['http_response'])
+                err_msg += 'Error: {0}.\n'.format(err_json['http_response'])
             if 'code' in err_json:
-                err_msg = err_msg + \
-                    'QRadar Error Code: {0}'.format(err_json['code'])
+                err_msg += 'QRadar Error Code: {0}'.format(err_json['code'])
             return_error(err_msg)
         return ""
 

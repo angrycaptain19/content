@@ -185,10 +185,9 @@ def main() -> None:
             return_results(generic_ansible('CiscoNXOS', 'nxos_vxlan_vtep', args, int_params, host_type))
         elif command == 'nxos-vxlan-vtep-vni':
             return_results(generic_ansible('CiscoNXOS', 'nxos_vxlan_vtep_vni', args, int_params, host_type))
-    # Log exceptions and return errors
     except Exception as e:
         demisto.error(traceback.format_exc())  # print the traceback
-        return_error(f'Failed to execute {command} command.\nError:\n{str(e)}')
+        return_error(f'Failed to execute {command} command.\nError:\n{e}')
 
 
 # ENTRY POINT

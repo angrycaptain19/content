@@ -42,14 +42,12 @@ APP_GROUP_OUTPUT = {
 
 
 def mock_client():
-    client = Client(base_url='https://test.com')
-    return client
+    return Client(base_url='https://test.com')
 
 
 def get_outputs_from_user_profile(user_profile):
     entry_context = user_profile.to_entry()
-    outputs = entry_context.get('Contents')
-    return outputs
+    return entry_context.get('Contents')
 
 
 class TestGetUserCommand:

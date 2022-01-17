@@ -23,7 +23,7 @@ MAX_LIMIT_FOR_MESSAGE = 1000
 DEFAULT_FETCH_LIMIT = '50'
 DEFAULT_FIRST_FETCH = '12 hours'
 DEFAULT_SESSION_TIMEOUT = 30
-TOKEN_EXPIRY_TIMEOUT = 60 * 60 * 4
+TOKEN_EXPIRY_TIMEOUT = 60**2 * 4
 CONTENT_TYPE_JSON = 'application/json'
 DATE_FORMAT_OF_YEAR_MONTH_DAY = '%Y-%m-%d'
 DATE_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
@@ -143,14 +143,14 @@ class Client(BaseClient):
 
         if resp.ok:
             content_type = resp.headers.get('Content-Type', '')
-            if content_type.__contains__(CONTENT_TYPE_JSON):
-                # Handle empty response
-                if resp.text == '':
-                    return resp
-                else:
-                    return resp.json()
-            else:
+            if (
+                content_type.__contains__(CONTENT_TYPE_JSON)
+                and resp.text == ''
+                or not content_type.__contains__(CONTENT_TYPE_JSON)
+            ):
                 return resp
+            else:
+                return resp.json()
 
     @staticmethod
     def handle_demisto_exception(e) -> None:
@@ -200,11 +200,10 @@ class Client(BaseClient):
             503: MESSAGES['INTERNAL_SERVER_ERROR']
         }
 
-        if resp.status_code in status_code_messages:
-            demisto.debug(f'Response Code: {resp.status_code}, Reason: {status_code_messages[resp.status_code]}')
-            raise DemistoException(status_code_messages[resp.status_code])
-        else:
+        if resp.status_code not in status_code_messages:
             raise DemistoException(resp.raise_for_status())
+        demisto.debug(f'Response Code: {resp.status_code}, Reason: {status_code_messages[resp.status_code]}')
+        raise DemistoException(status_code_messages[resp.status_code])
 
     @staticmethod
     def set_integration_context(resp) -> dict:
@@ -286,7 +285,7 @@ def validate_fetch_policy_action(fetch_policy_action) -> bool:
     if fetch_policy_action == "" or fetch_policy_action is None:
         return True
 
-    if not (fetch_policy_action in policy_actions):
+    if fetch_policy_action not in policy_actions:
         raise ValueError(MESSAGES['INVALID_POLICY_ACTION_TYPE'])
     return False
 
@@ -303,7 +302,7 @@ def validate_exclude_alert_type(exclude_alert_type) -> bool:
     if exclude_alert_type == "" or exclude_alert_type is None:
         return True
 
-    if not (exclude_alert_type in exclude_alert_types):
+    if exclude_alert_type not in exclude_alert_types:
         raise ValueError(MESSAGES['INVALID_EXCLUDE_ALERT_TYPE'])
     return False
 
@@ -449,8 +448,7 @@ def get_events_params(args: Dict[str, Any], max_record=MAX_LIMIT_FOR_EVENT) -> D
 
     if 'page_id' in arg_keys:
         try:
-            page_id = int(args.get('page_id', 1))
-            page_id -= 1
+            page_id = int(args.get('page_id', 1)) - 1
             if page_id < 0:
                 raise ValueError(MESSAGES['INVALID_PAGE_ID'])
         except ValueError:
@@ -635,9 +633,13 @@ def get_message(client: Client, policy_id: str) -> Any:
         url = policy_response['alert_event']['collector_message_id']
         message_response = client.http_request(method='GET', url_suffix=URL_SUFFIX['GET_MESSAGES'] + f'/{url}', headers=headers)
         # attack_class_types Key is added to separate out the attack_class' keys in Dashboard
-        message_response['message']['attack_class_types'] = []
-        for attack_class in list(message_response['message']['attack_class'].keys()):
-            message_response['message']['attack_class_types'].append({"Types": attack_class})
+        message_response['message']['attack_class_types'] = [
+            {"Types": attack_class}
+            for attack_class in list(
+                message_response['message']['attack_class'].keys()
+            )
+        ]
+
         return message_response['message']
     except Exception as ex:
         demisto.debug(str(ex))
@@ -800,10 +802,9 @@ def main() -> None:
         elif demisto.command() == 'apd-remediate-message':
             return_results(remediate_message_command(client, args))
 
-    # Log exceptions
     except Exception as e:
         demisto.error(traceback.format_exc())  # print the traceback
-        return_error(f'Failed to execute {demisto.command()} command.\nError:\n{str(e)}')
+        return_error(f'Failed to execute {demisto.command()} command.\nError:\n{e}')
 
 
 ''' ENTRY POINT '''

@@ -38,8 +38,7 @@ class DatetimeEncoder(json.JSONEncoder):
 
 def parse_resource_ids(resource_id):
     id_list = resource_id.replace(" ", "")
-    resource_ids = id_list.split(",")
-    return resource_ids
+    return id_list.split(",")
 
 
 def create_entry(title, data, ec):
@@ -67,8 +66,7 @@ def get_function(args, aws_client):
     obj = vars(client._client_config)
     kwargs = {'FunctionName': args.get('functionName')}
     if args.get('qualifier') is not None:
-        kwargs.update({'Qualifier': args.get('qualifier')})
-
+        kwargs['Qualifier'] = args.get('qualifier')
     response = client.get_function(**kwargs)
     func = response['Configuration']
     data = ({
@@ -133,8 +131,7 @@ def list_aliases(args, aws_client):
     output = []
     kwargs = {'FunctionName': args.get('functionName')}
     if args.get('functionVersion') is not None:
-        kwargs.update({'FunctionVersion': args.get('functionVersion')})
-
+        kwargs['FunctionVersion'] = args.get('functionVersion')
     paginator = client.get_paginator('list_aliases')
     for response in paginator.paginate(**kwargs):
         for alias in response['Aliases']:
@@ -164,32 +161,31 @@ def invoke(args, aws_client):
     obj = vars(client._client_config)
     kwargs = {'FunctionName': args.get('functionName')}
     if args.get('invocationType') is not None:
-        kwargs.update({'InvocationType': args.get('invocationType')})
+        kwargs['InvocationType'] = args.get('invocationType')
     if args.get('logType') is not None:
-        kwargs.update({'LogType': args.get('logType')})
+        kwargs['LogType'] = args.get('logType')
     if args.get('clientContext') is not None:
-        kwargs.update({'ClientContext': args.get('clientContext')})
+        kwargs['ClientContext'] = args.get('clientContext')
     if args.get('payload') is not None:
         payload = args.get('payload')
         if (not isinstance(payload, str)) or (not payload.startswith('{') and not payload.startswith('[')):
             payload = json.dumps(payload)
-        kwargs.update({'Payload': payload})
+        kwargs['Payload'] = payload
     if args.get('qualifier') is not None:
-        kwargs.update({'Qualifier': args.get('qualifier')})
+        kwargs['Qualifier'] = args.get('qualifier')
     response = client.invoke(**kwargs)
     data = ({
         'FunctionName': args.get('functionName'),
         'Region': obj['_user_provided_options']['region_name'],
     })
     if 'LogResult' in response:
-        data.update({'LogResult': base64.b64decode(response['LogResult']).decode("utf-8")})  # type:ignore
+        data['LogResult'] = base64.b64decode(response['LogResult']).decode("utf-8")
     if 'Payload' in response:
-        data.update({'Payload': response['Payload'].read().decode("utf-8")})  # type:ignore
+        data['Payload'] = response['Payload'].read().decode("utf-8")
     if 'ExecutedVersion' in response:
-        data.update({'ExecutedVersion': response['ExecutedVersion']})  # type:ignore
+        data['ExecutedVersion'] = response['ExecutedVersion']
     if 'FunctionError' in response:
-        data.update({'FunctionError': response['FunctionError']})
-
+        data['FunctionError'] = response['FunctionError']
     ec = {'AWS.Lambda.InvokedFunctions(val.FunctionName === obj.FunctionName)': data}
     human_readable = tableToMarkdown('AWS Lambda Invoked Functions', data)
     return_outputs(human_readable, ec)
@@ -208,10 +204,9 @@ def remove_permission(args, aws_client):
         'StatementId': args.get('StatementId')
     }
     if args.get('Qualifier') is not None:
-        kwargs.update({'Qualifier': args.get('Qualifier')})
+        kwargs['Qualifier'] = args.get('Qualifier')
     if args.get('RevisionId') is not None:
-        kwargs.update({'RevisionId': args.get('RevisionId')})
-
+        kwargs['RevisionId'] = args.get('RevisionId')
     response = client.remove_permission(**kwargs)
     if response['ResponseMetadata']['HTTPStatusCode'] == 200:
         demisto.results('Permissions have been removed')

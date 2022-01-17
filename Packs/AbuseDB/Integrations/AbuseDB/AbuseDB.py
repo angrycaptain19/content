@@ -140,7 +140,14 @@ def analysis_to_entry(info, reliability, threshold=THRESHOLD, verbose=VERBOSE):
         }
 
         if verbose:
-            reports = sum([report_dict.get("categories") for report_dict in analysis.get("reports")], [])  # type: list
+            reports = sum(
+                (
+                    report_dict.get("categories")
+                    for report_dict in analysis.get("reports")
+                ),
+                [],
+            )
+
             categories = set(filter(lambda category_id: category_id in CATEGORIES_NAME.keys(), reports))
             abuse_ec["IP"]["Reports"] = {CATEGORIES_NAME[c]: reports.count(c) for c in categories}
 
@@ -187,40 +194,55 @@ def blacklist_to_entry(data, saveToContext):
         wr = csv.writer(f, quoting=csv.QUOTE_ALL)
         for ip in ips:
             wr.writerow([ip])
-    entry = {
+    return {
         'HumanReadable': '',
         'Contents': ips,
         'ContentsFormat': formats['json'],
         'Type': entryTypes['file'],
         'File': "Blacklist.csv",
         'FileID': temp,
-        'EntryContext': {'AbuseIPDB': createContext(context if saveToContext else None, removeNull=True)}
+        'EntryContext': {
+            'AbuseIPDB': createContext(
+                context if saveToContext else None, removeNull=True
+            )
+        },
     }
-    return entry
 
 
 def getDBotScore(analysis, threshold=THRESHOLD):
     total_reports = analysis.get("totalReports") or analysis.get("numReports") or 0
     abuse_score = int(analysis.get("abuseConfidenceScore"))
-    dbot_score = 0 if total_reports == 0 else 1 if abuse_score < 20 else 2 if abuse_score < int(threshold) else 3
-    return dbot_score
+    return (
+        0
+        if total_reports == 0
+        else 1
+        if abuse_score < 20
+        else 2
+        if abuse_score < int(threshold)
+        else 3
+    )
 
 
 def createEntry(context_ip, context_ip_generic, human_readable, dbot_scores, timeline, title):
-    entry = {
+    return {
         'ContentsFormat': formats['json'],
         'Type': entryTypes['note'],
         'Contents': context_ip,
         'ReadableContentsFormat': formats['markdown'],
-        'HumanReadable': tableToMarkdown(title, human_readable, removeNull=True),
+        'HumanReadable': tableToMarkdown(
+            title, human_readable, removeNull=True
+        ),
         'EntryContext': {
-            'IP(val.Address && val.Address == obj.Address)': createContext(context_ip_generic, removeNull=True),
-            'AbuseIPDB(val.IP.Address && val.IP.Address == obj.IP.Address)': createContext(context_ip, removeNull=True),
-            'DBotScore': createContext(dbot_scores, removeNull=True)
+            'IP(val.Address && val.Address == obj.Address)': createContext(
+                context_ip_generic, removeNull=True
+            ),
+            'AbuseIPDB(val.IP.Address && val.IP.Address == obj.IP.Address)': createContext(
+                context_ip, removeNull=True
+            ),
+            'DBotScore': createContext(dbot_scores, removeNull=True),
         },
-        'IndicatorTimeline': timeline
+        'IndicatorTimeline': timeline,
     }
-    return entry
 
 
 ''' FUNCTIONS '''
@@ -259,8 +281,7 @@ def report_ip_command(ip, categories):
         "ip": ip,
         "categories": ",".join([CATEGORIES_ID[c] if c in CATEGORIES_ID else c for c in categories.split()])
     }
-    analysis = http_request("POST", url_suffix=REPORT_CMD, params=params)
-    return analysis
+    return http_request("POST", url_suffix=REPORT_CMD, params=params)
 
 
 def get_blacklist_command(limit, days, confidence, saveToContext):
@@ -284,16 +305,20 @@ def test_module(reliability):
 
 def get_categories_command():
     categories = {str(key): value for key, value in CATEGORIES_NAME.items()}
-    entry = {
+    return {
         'ContentsFormat': formats['json'],
         'Type': entryTypes['note'],
         'Contents': categories,
         'ReadableContentsFormat': formats['markdown'],
-        'HumanReadable': tableToMarkdown("AbuseIPDB report categories", categories, removeNull=True),
-        'EntryContext': {'AbuseIPDB.Categories(val && val == obj)': createContext(categories, removeNull=True),
-                         }
+        'HumanReadable': tableToMarkdown(
+            "AbuseIPDB report categories", categories, removeNull=True
+        ),
+        'EntryContext': {
+            'AbuseIPDB.Categories(val && val == obj)': createContext(
+                categories, removeNull=True
+            ),
+        },
     }
-    return entry
 
 
 try:

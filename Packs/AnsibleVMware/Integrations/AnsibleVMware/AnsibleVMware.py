@@ -344,10 +344,9 @@ def main() -> None:
             return_results(generic_ansible('VMware', 'vcenter_folder', args, int_params, host_type, creds_mapping))
         elif command == 'vmware-vcenter-license':
             return_results(generic_ansible('VMware', 'vcenter_license', args, int_params, host_type, creds_mapping))
-    # Log exceptions and return errors
     except Exception as e:
         demisto.error(traceback.format_exc())  # print the traceback
-        return_error(f'Failed to execute {command} command.\nError:\n{str(e)}')
+        return_error(f'Failed to execute {command} command.\nError:\n{e}')
 
 
 # ENTRY POINT

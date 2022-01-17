@@ -55,10 +55,9 @@ def main() -> None:
             return_results(generic_ansible('OpenSSL', 'certificate_complete_chain', args, int_params, host_type))
         elif command == 'openssl-get-certificate':
             return_results(generic_ansible('OpenSSL', 'get_certificate', args, int_params, host_type))
-    # Log exceptions and return errors
     except Exception as e:
         demisto.error(traceback.format_exc())  # print the traceback
-        return_error(f'Failed to execute {command} command.\nError:\n{str(e)}')
+        return_error(f'Failed to execute {command} command.\nError:\n{e}')
 
 
 # ENTRY POINT

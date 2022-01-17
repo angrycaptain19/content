@@ -57,27 +57,32 @@ def rank_to_context(domain: str,
                     top_domain_threshold: int,
                     suspicious_domain_threshold: Optional[int],
                     reliability: DBotScoreReliability):
-    if rank is None:
+    if (
+        rank is None
+        or rank >= 0
+        and not 0 < rank <= top_domain_threshold
+        and (
+            not suspicious_domain_threshold
+            or rank <= suspicious_domain_threshold
+        )
+    ):
         score = Common.DBotScore.NONE
     elif rank < 0:
         raise DemistoException(f'AlexaV2 error: {rank} is invalid. Rank should be positive')
     elif 0 < rank <= top_domain_threshold:
         score = Common.DBotScore.GOOD
-    elif suspicious_domain_threshold and rank > suspicious_domain_threshold:
+    else:
         score = Common.DBotScore.SUSPICIOUS
-    else:  # alexa_rank < client.threshold:
-        score = Common.DBotScore.NONE
     dbot_score = Common.DBotScore(
         indicator=domain,
         indicator_type=DBotScoreType.DOMAIN,
         reliability=reliability,
         score=score
     )
-    domain_standard_context = Common.Domain(
+    return Common.Domain(
         domain=domain,
         dbot_score=dbot_score
     )
-    return domain_standard_context
 
 
 ''' COMMAND FUNCTIONS '''
@@ -123,7 +128,7 @@ def alexa_domain(client: Client, domains: List[str]) -> List[CommandResults]:
                                                                  top_domain_threshold=client.top_domain_threshold,
                                                                  reliability=client.reliability)
 
-        rank: str = rank if rank else 'Unknown'
+        rank: str = rank or 'Unknown'
         result = {'Name': domain_res,
                   'Indicator': domain_res,
                   'Rank': rank}
@@ -182,7 +187,7 @@ def main() -> None:
 
     except Exception as e:
         demisto.error(traceback.format_exc())  # print the traceback
-        return_error(f'Failed to execute {demisto.command()} command.\nError:\n{str(e)}')
+        return_error(f'Failed to execute {demisto.command()} command.\nError:\n{e}')
 
 
 ''' ENTRY POINT '''

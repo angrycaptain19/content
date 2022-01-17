@@ -15,8 +15,7 @@ class DatetimeEncoder(json.JSONEncoder):
 
 def parse_resource_ids(resource_id):
     id_list = resource_id.replace(" ", "")
-    resourceIds = id_list.split(",")
-    return resourceIds
+    return id_list.split(",")
 
 
 def create_entry(title, data, ec):
@@ -50,8 +49,7 @@ def create_log_group(args, aws_client):
         kwargs = {'logGroupName': args.get('logGroupName')}
 
         if args.get('kmsKeyId') is not None:
-            kwargs.update({'kmsKeyId': args.get('kmsKeyId')})
-
+            kwargs['kmsKeyId'] = args.get('kmsKeyId')
         response = client.create_log_group(**kwargs)
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
             return "The Log Group was created successfully"
@@ -130,32 +128,28 @@ def filter_log_events(args, aws_client):
             role_session_duration=args.get('roleSessionDuration'),
         )
 
-        data = []
         kwargs = {'logGroupName': args.get('logGroupName')}
 
         if args.get('logStreamNames') is not None:
-            kwargs.update({'logStreamNames': parse_resource_ids(args.get('logStreamNames'))})
+            kwargs['logStreamNames'] = parse_resource_ids(args.get('logStreamNames'))
         if args.get('startTime') is not None:
-            kwargs.update({'startTime': int(args.get('startTime'))})
+            kwargs['startTime'] = int(args.get('startTime'))
         if args.get('endTime') is not None:
-            kwargs.update({'endTime': int(args.get('endTime'))})
+            kwargs['endTime'] = int(args.get('endTime'))
         if args.get('filterPattern') is not None:
-            kwargs.update({'filterPattern': args.get('filterPattern')})
+            kwargs['filterPattern'] = args.get('filterPattern')
         if args.get('limit') is not None:
-            kwargs.update({'limit': int(args.get('limit'))})
+            kwargs['limit'] = int(args.get('limit'))
         if args.get('interleaved') is not None:
-            kwargs.update({'interleaved': True if args.get('interleaved') == 'True' else False})
-
+            kwargs['interleaved'] = args.get('interleaved') == 'True'
         response = client.filter_log_events(**kwargs)
-        for event in response['events']:
-            data.append({
+        data = [{
                 'LogStreamName': event['logStreamName'],
                 'Timestamp': event['timestamp'],
                 'Message': event['message'],
                 'IngestionTime': event['ingestionTime'],
                 'EventId': event['eventId']
-            })
-
+            } for event in response['events']]
         ec = {"AWS.CloudWatchLogs.Events(val.eventId === obj.eventId)": data}
         return create_entry('AWS CloudWatch Logs Events', data, ec)
 
@@ -175,10 +169,9 @@ def describe_log_groups(args, aws_client):
         data = []
         kwargs = {}
         if args.get('logGroupNamePrefix') is not None:
-            kwargs.update({'logGroupNamePrefix': args.get('logGroupNamePrefix')})
+            kwargs['logGroupNamePrefix'] = args.get('logGroupNamePrefix')
         if args.get('limit') is not None:
-            kwargs.update({'limit': int(args.get('limit'))})
-
+            kwargs['limit'] = int(args.get('limit'))
         response = client.describe_log_groups(**kwargs)
         for i, logGroup in enumerate(response['logGroups']):
             data.append({
@@ -214,12 +207,11 @@ def describe_log_streams(args, aws_client):
         data = []
         kwargs = {'logGroupName': args.get('logGroupName')}
         if args.get('logStreamNamePrefix') is not None:
-            kwargs.update({'logStreamNamePrefix': args.get('logStreamNamePrefix')})
+            kwargs['logStreamNamePrefix'] = args.get('logStreamNamePrefix')
         if args.get('limit') is not None:
-            kwargs.update({'limit': int(args.get('limit'))})
+            kwargs['limit'] = int(args.get('limit'))
         if args.get('orderBy') is not None:
-            kwargs.update({'orderBy': args.get('orderBy')})
-
+            kwargs['orderBy'] = args.get('orderBy')
         response = client.describe_log_streams(**kwargs)
         for i, logStream in enumerate(response['logStreams']):
             data.append({
@@ -302,8 +294,7 @@ def put_log_events(args, aws_client):
             }]
         }
         if args.get('sequenceToken') is not None:
-            kwargs.update({'sequenceToken': args.get('sequenceToken')})
-
+            kwargs['sequenceToken'] = args.get('sequenceToken')
         response = client.put_log_events(**kwargs)
         data = ({'NextSequenceToken': response['nextSequenceToken']})
 
@@ -372,26 +363,22 @@ def describe_metric_filters(args, aws_client):
             role_session_name=args.get('roleSessionName'),
             role_session_duration=args.get('roleSessionDuration'),
         )
-        data = []
         kwargs = {}
         if args.get('logGroupName') is not None:
-            kwargs.update({'logGroupName': args.get('logGroupName')})
+            kwargs['logGroupName'] = args.get('logGroupName')
         if args.get('filterNamePrefix') is not None:
-            kwargs.update({'filterNamePrefix': args.get('filterNamePrefix')})
+            kwargs['filterNamePrefix'] = args.get('filterNamePrefix')
         if args.get('metricName') is not None:
-            kwargs.update({'metricName': args.get('metricName')})
+            kwargs['metricName'] = args.get('metricName')
         if args.get('metricNamespace') is not None:
-            kwargs.update({'metricNamespace': args.get('metricNamespace')})
-
+            kwargs['metricNamespace'] = args.get('metricNamespace')
         response = client.describe_metric_filters(**kwargs)
-        for metric in response['metricFilters']:
-            data.append({
+        data = [{
                 'FilterName': metric['filterName'],
                 'FilterPattern': metric['filterPattern'],
                 'CreationTime': metric['creationTime'],
                 'LogGroupName': metric['logGroupName']
-            })
-
+            } for metric in response['metricFilters']]
         raw = json.loads(json.dumps(response['metricFilters'], cls=DatetimeEncoder))
         ec = {"AWS.CloudWatchLogs.MetricFilters(val.FilterName === obj.FilterName)": raw}
         return create_entry('AWS CloudWatch Metric Filters', data, ec)

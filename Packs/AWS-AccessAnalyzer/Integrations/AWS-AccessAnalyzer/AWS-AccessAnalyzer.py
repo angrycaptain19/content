@@ -44,40 +44,44 @@ def aws_session(service='accessanalyzer', region=None, roleArn=None, roleSession
         })
 
     if roleSessionDuration is not None:
-        kwargs.update({'DurationSeconds': int(roleSessionDuration)})
+        kwargs['DurationSeconds'] = int(roleSessionDuration)
     elif AWS_ROLE_SESSION_DURATION is not None:
-        kwargs.update({'DurationSeconds': int(AWS_ROLE_SESSION_DURATION)})
-
+        kwargs['DurationSeconds'] = int(AWS_ROLE_SESSION_DURATION)
     if rolePolicy is not None:
-        kwargs.update({'Policy': rolePolicy})
+        kwargs['Policy'] = rolePolicy
     elif AWS_ROLE_POLICY is not None:
-        kwargs.update({'Policy': AWS_ROLE_POLICY})
+        kwargs['Policy'] = AWS_ROLE_POLICY
     if kwargs and not AWS_ACCESS_KEY_ID:
 
-        if not AWS_ACCESS_KEY_ID:
-            sts_client = boto3.client('sts', config=config, verify=VERIFY_CERTIFICATE,
-                                      region_name=AWS_DEFAULT_REGION)
-            sts_response = sts_client.assume_role(**kwargs)
-            if region is not None:
-                client = boto3.client(
-                    service_name=service,
-                    region_name=region,
-                    aws_access_key_id=sts_response['Credentials']['AccessKeyId'],
-                    aws_secret_access_key=sts_response['Credentials']['SecretAccessKey'],
-                    aws_session_token=sts_response['Credentials']['SessionToken'],
-                    verify=VERIFY_CERTIFICATE,
-                    config=config
-                )
-            else:
-                client = boto3.client(
-                    service_name=service,
-                    region_name=AWS_DEFAULT_REGION,
-                    aws_access_key_id=sts_response['Credentials']['AccessKeyId'],
-                    aws_secret_access_key=sts_response['Credentials']['SecretAccessKey'],
-                    aws_session_token=sts_response['Credentials']['SessionToken'],
-                    verify=VERIFY_CERTIFICATE,
-                    config=config
-                )
+        sts_client = boto3.client('sts', config=config, verify=VERIFY_CERTIFICATE,
+                                  region_name=AWS_DEFAULT_REGION)
+        sts_response = sts_client.assume_role(**kwargs)
+        return (
+            boto3.client(
+                service_name=service,
+                region_name=region,
+                aws_access_key_id=sts_response['Credentials']['AccessKeyId'],
+                aws_secret_access_key=sts_response['Credentials'][
+                    'SecretAccessKey'
+                ],
+                aws_session_token=sts_response['Credentials']['SessionToken'],
+                verify=VERIFY_CERTIFICATE,
+                config=config,
+            )
+            if region is not None
+            else boto3.client(
+                service_name=service,
+                region_name=AWS_DEFAULT_REGION,
+                aws_access_key_id=sts_response['Credentials']['AccessKeyId'],
+                aws_secret_access_key=sts_response['Credentials'][
+                    'SecretAccessKey'
+                ],
+                aws_session_token=sts_response['Credentials']['SessionToken'],
+                verify=VERIFY_CERTIFICATE,
+                config=config,
+            )
+        )
+
     elif AWS_ACCESS_KEY_ID and AWS_ROLE_ARN:
         sts_client = boto3.client(
             service_name='sts',
@@ -91,7 +95,7 @@ def aws_session(service='accessanalyzer', region=None, roleArn=None, roleSession
             'RoleSessionName': AWS_ROLE_SESSION_NAME,
         })
         sts_response = sts_client.assume_role(**kwargs)
-        client = boto3.client(
+        return boto3.client(
             service_name=service,
             region_name=AWS_DEFAULT_REGION,
             aws_access_key_id=sts_response['Credentials']['AccessKeyId'],
@@ -100,9 +104,8 @@ def aws_session(service='accessanalyzer', region=None, roleArn=None, roleSession
             verify=VERIFY_CERTIFICATE,
             config=config
         )
-    else:
-        if region is not None:
-            client = boto3.client(
+    elif region is not None:
+        return boto3.client(
                 service_name=service,
                 region_name=region,
                 aws_access_key_id=AWS_ACCESS_KEY_ID,
@@ -110,8 +113,8 @@ def aws_session(service='accessanalyzer', region=None, roleArn=None, roleSession
                 verify=VERIFY_CERTIFICATE,
                 config=config
             )
-        else:
-            client = boto3.client(
+    else:
+        return boto3.client(
                 service_name=service,
                 region_name=AWS_DEFAULT_REGION,
                 aws_access_key_id=AWS_ACCESS_KEY_ID,
@@ -119,8 +122,6 @@ def aws_session(service='accessanalyzer', region=None, roleArn=None, roleSession
                 verify=VERIFY_CERTIFICATE,
                 config=config
             )
-
-    return client
 
 
 class DatetimeEncoder(json.JSONEncoder):
@@ -142,11 +143,8 @@ def list_analyzers_command(args):
         roleSessionDuration=args.get('roleSessionDuration')
     )
 
-    data = []
-
     response = client.list_analyzers()
-    for analyzer in response['analyzers']:
-        data.append(analyzer)
+    data = list(response['analyzers'])
     data = json.loads(json.dumps(data, cls=DatetimeEncoder))
 
     ec = {'AWS.AccessAnalyzer.Analyzers(val.arn === obj.arn)': data}
@@ -212,7 +210,7 @@ def get_findings_command(args):
         'orderBy': 'DESC'
     }
 
-    if len(filters) > 0:
+    if filters:
         kwargs['filter'] = filters
 
     response = client.list_findings(**kwargs)
@@ -243,7 +241,7 @@ def list_findings_command(args):
     if args.get('status'):
         filters['status'] = {"eq": [args.get('status')]}
 
-    if len(filters) > 0:
+    if filters:
         kwargs['filter'] = filters
 
     response = client.list_findings(**kwargs)
@@ -362,8 +360,7 @@ def fetch_incidents(last_run: dict = None):
         last_fetch = date_to_timestamp(delta)
 
     incidents: list = []
-    dArgs = {}
-    dArgs['roleArn'] = dParams.get('roleArn')
+    dArgs = {'roleArn': dParams.get('roleArn')}
     dArgs['region'] = dParams.get('region')
     dArgs['roleSessionName'] = dParams.get('roleSessionName')
     dArgs['roleSessionDuration'] = dParams.get('roleSessionDuration')
@@ -389,23 +386,23 @@ def fetch_incidents(last_run: dict = None):
 
             inc_timestamp = date_to_timestamp(raw_incident['updatedAt'])
 
-            if inc_timestamp > int(last_fetch):
-                incidents.append(incident)
-                if inc_timestamp > tmp_last_fetch:
-                    tmp_last_fetch = inc_timestamp
-            else:
+            if inc_timestamp <= int(last_fetch):
                 break
 
+            incidents.append(incident)
+            if inc_timestamp > tmp_last_fetch:
+                tmp_last_fetch = inc_timestamp
         if 'nextToken' in raw_incidents[0]:
             nextToken = raw_incidents[0]['nextToken']
         else:
             break
 
-    demisto.setLastRun({"time": tmp_last_fetch if tmp_last_fetch else last_fetch})
+    demisto.setLastRun({"time": tmp_last_fetch or last_fetch})
     return incidents
 
 
 """EXECUTION BLOCK"""
+
 try:
     if demisto.command() == 'test-module':
         result = test_function()
@@ -428,4 +425,4 @@ try:
         update_findings_command(demisto.args())
 
 except Exception as e:
-    return_error(f"Error has occured in AWS Access Analyzer Integration: {str(e)}")
+    return_error(f'Error has occured in AWS Access Analyzer Integration: {e}')

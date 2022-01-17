@@ -131,26 +131,25 @@ def get_search_job_result(client: Client, args: Dict) -> List[CommandResults]:
     for job_id in job_ids:
         response = client.get_search_job_result_request(job_id)
         if 'error' in response:
-            raise Exception(f"{str(response.get('error'))}. Job ID might have expired.")
+            raise Exception(f'{response.get("error")}. Job ID might have expired.')
 
         outputs = response
         outputs.update({'job_id': job_id})
         if not response.get('complete'):
             human_readable = f'job ID: {job_id} is still in progress.'
             outputs.update({'status': 'in progress'})
+        elif response.get('totalMatches'):
+            headers = ['status', 'job_id', 'category', 'totalFiles', 'scannedEvents']
+            human_readable = tableToMarkdown(name="Forensic search metadata:", t=response, headers=headers,
+                                             removeNull=True)
+            if verbose:
+                human_readable += tableToMarkdown(name="Forensic search results:",
+                                                  t=response.get('streamResults', [])[:limit], removeNull=True)
+            if 'streamResults' in outputs:
+                outputs['streamResults'] = outputs.get('streamResults', [])[:limit]  # limit the outputs to the context
         else:
-            if response.get('totalMatches'):
-                headers = ['status', 'job_id', 'category', 'totalFiles', 'scannedEvents']
-                human_readable = tableToMarkdown(name="Forensic search metadata:", t=response, headers=headers,
-                                                 removeNull=True)
-                if verbose:
-                    human_readable += tableToMarkdown(name="Forensic search results:",
-                                                      t=response.get('streamResults', [])[:limit], removeNull=True)
-                if 'streamResults' in outputs:
-                    outputs['streamResults'] = outputs.get('streamResults', [])[:limit]  # limit the outputs to the context
-            else:
-                human_readable = f'No matches found for the given job ID: {job_id}.'
-                response.update({'status': 'completed'})
+            human_readable = f'No matches found for the given job ID: {job_id}.'
+            response.update({'status': 'completed'})
 
         command_result = CommandResults(
             outputs_prefix='AnomaliEnterprise.ForensicSearch',
@@ -299,8 +298,9 @@ def main() -> None:
             raise NotImplementedError(f'Command "{command}" is not implemented.')
 
     except Exception as err:
-        return_error(f'Failed to execute {command} command. Error: {str(err)} \n '
-                     f'tracback: {traceback.format_exc()}')
+        return_error(
+            f'Failed to execute {command} command. Error: {err} \n tracback: {traceback.format_exc()}'
+        )
 
 
 ''' ENTRY POINT '''

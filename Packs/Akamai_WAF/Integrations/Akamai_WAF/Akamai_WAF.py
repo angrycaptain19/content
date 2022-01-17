@@ -102,8 +102,9 @@ class Client(BaseClient):
             "name": list_name,
             "type": list_type,
             "description": description,
-            "list": elements if elements else []
+            "list": elements or [],
         }
+
         return self._http_request(method='POST',
                                   url_suffix='/network-list/v2/network-lists',
                                   json_data=body)
@@ -347,8 +348,7 @@ def get_network_list_by_id_command(client: Client, network_list_id: str) -> Tupl
 
 @logger
 def create_network_list_command(client: Client, list_name: str, list_type: str, description: Optional[str] = None,
-                                entry_id: Optional[str] = None, elements: Optional[Union[str, list]] = None) \
-        -> Tuple[object, dict, Union[List, Dict]]:
+                                entry_id: Optional[str] = None, elements: Optional[Union[str, list]] = None) -> Tuple[object, dict, Union[List, Dict]]:
     """
         Create network list
 
@@ -363,10 +363,7 @@ def create_network_list_command(client: Client, list_name: str, list_type: str, 
     Returns:
         human readable (markdown format), entry context and raw response
     """
-    if entry_id:
-        elements = get_list_from_file(entry_id)
-    else:
-        elements = argToList(elements)
+    elements = get_list_from_file(entry_id) if entry_id else argToList(elements)
     raw_response: dict = client.create_network_list(list_name=list_name,
                                                     list_type=list_type,
                                                     elements=elements,
@@ -442,8 +439,7 @@ def activate_network_list_command(client: Client, network_list_ids: str, env: st
 
 @logger
 def add_elements_to_network_list_command(client: Client, network_list_id: str, entry_id: Optional[str] = None,
-                                         elements: Optional[Union[str, list]] = None) \
-        -> Tuple[object, dict, Union[List, Dict]]:
+                                         elements: Optional[Union[str, list]] = None) -> Tuple[object, dict, Union[List, Dict]]:
     """Add elements to network list by ID
 
     Args:
@@ -455,10 +451,7 @@ def add_elements_to_network_list_command(client: Client, network_list_id: str, e
     Returns:
         human readable (markdown format), entry context and raw response
     """
-    if entry_id:
-        elements = get_list_from_file(entry_id)
-    else:
-        elements = argToList(elements)
+    elements = get_list_from_file(entry_id) if entry_id else argToList(elements)
     raw_response: dict = client.add_elements_to_network_list(network_list_id=network_list_id,
                                                              elements=elements)
     if raw_response:
@@ -494,8 +487,7 @@ def remove_element_from_network_list_command(client: Client, network_list_id: st
 
 
 @logger
-def get_activation_status_command(client: Client, network_list_ids: Union[str, list], env: str) \
-        -> Tuple[object, dict, Union[List, Dict]]:
+def get_activation_status_command(client: Client, network_list_ids: Union[str, list], env: str) -> Tuple[object, dict, Union[List, Dict]]:
     """Get activation status
 
     Args:
@@ -537,15 +529,10 @@ def get_activation_status_command(client: Client, network_list_ids: Union[str, l
         except requests.exceptions.RequestException:
             human_readable += f'{INTEGRATION_NAME} - Could not find any results for given query\n'
 
-    if env == "PRODUCTION":
+    if env in {"PRODUCTION", "STAGING"}:
         context_entry = {
             f"{INTEGRATION_CONTEXT_NAME}.NetworkLists.ActivationStatus(val.UniqueID == obj.UniqueID)": ecs
         }
-    elif env == "STAGING":
-        context_entry = {
-            f"{INTEGRATION_CONTEXT_NAME}.NetworkLists.ActivationStatus(val.UniqueID == obj.UniqueID)": ecs
-        }
-
     return human_readable, context_entry, raws
 
 

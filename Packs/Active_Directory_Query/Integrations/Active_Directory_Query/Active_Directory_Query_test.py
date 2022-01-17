@@ -79,7 +79,7 @@ def ssl_bad_socket_server(port):
                     raise
                 conn.recv(32)
                 msg = b'THIS IS A TEST SERVER WHICH IGNORES PROTOCOL\n\n'
-                for x in range(10):
+                for _ in range(10):
                     msg += msg
                 conn.send(msg)
                 conn.shutdown(socket.SHUT_RDWR)
@@ -162,9 +162,7 @@ def test_endpoint_entry():
 
 def get_outputs_from_user_profile(user_profile):
     entry_context = user_profile.to_entry()
-    outputs = entry_context.get('Contents')
-
-    return outputs
+    return entry_context.get('Contents')
 
 
 def mock_demisto_map_object(object, mapper_name, incident_type):

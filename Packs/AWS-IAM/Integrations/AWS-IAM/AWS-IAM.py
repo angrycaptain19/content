@@ -57,8 +57,7 @@ def create_user(args, aws_client):  # pragma: no cover
     )
     kwargs = {'UserName': args.get('userName')}
     if args.get('path'):
-        kwargs.update({'Path': args.get('path')})
-
+        kwargs['Path'] = args.get('path')
     response = client.create_user(**kwargs)
     user = response['User']
     data = ({
@@ -85,9 +84,8 @@ def create_login_profile(args, aws_client):  # pragma: no cover
         'Password': args.get('password')
     }
     if args.get('passwordResetRequired'):
-        kwargs.update({'PasswordResetRequired': True if args.get(
-            'passwordResetRequired') == 'True' else False})
-
+        kwargs['PasswordResetRequired'] = args.get(
+            'passwordResetRequired') == 'True'
     response = client.create_login_profile(**kwargs)
     if response['ResponseMetadata']['HTTPStatusCode'] == 200:
         demisto.results("Login Profile Was Created For user {0} ".format(args.get('userName')))
@@ -146,10 +144,9 @@ def update_user(args, aws_client):  # pragma: no cover
     )
     kwargs = {'UserName': args.get('oldUserName')}
     if args.get('newUserName'):
-        kwargs.update({'NewUserName': args.get('newUserName')})
+        kwargs['NewUserName'] = args.get('newUserName')
     if args.get('newPath'):
-        kwargs.update({'NewPath': args.get('newPath')})
-
+        kwargs['NewPath'] = args.get('newPath')
     response = client.update_user(**kwargs)
     if response['ResponseMetadata']['HTTPStatusCode'] == 200:
         demisto.results(
@@ -178,8 +175,9 @@ def update_login_profile(args, aws_client):  # pragma: no cover
     response = client.update_login_profile(
         Password=args.get('newPassword'),
         UserName=args.get('userName'),
-        PasswordResetRequired=True if args.get('passwordResetRequired') == 'True' else False
+        PasswordResetRequired=args.get('passwordResetRequired') == 'True',
     )
+
     if response['ResponseMetadata']['HTTPStatusCode'] == 200:
         demisto.results("The user {0} Password was changed".format(args.get('userName')))
 
@@ -193,8 +191,7 @@ def create_group(args, aws_client):  # pragma: no cover
     )
     kwargs = {'GroupName': args.get('groupName')}
     if args.get('path') is not None:
-        kwargs.update({'Path': args.get('path')})
-
+        kwargs['Path'] = args.get('path')
     response = client.create_group(**kwargs)
     group = response['Group']
     data = ({
@@ -239,17 +236,20 @@ def list_groups_for_user(args, aws_client):  # pragma: no cover
         role_session_name=args.get('roleSessionName'),
         role_session_duration=args.get('roleSessionDuration'),
     )
-    data = []
     response = client.list_groups_for_user(UserName=args.get('userName'))
-    for group in response['Groups']:
-        data.append({
+    data = [
+        {
             'UserName': args.get('userName'),
             'GroupName': group['GroupName'],
             'GroupId': group['GroupId'],
             'Arn': group['Arn'],
-            'CreateDate': datetime.strftime(group['CreateDate'], '%Y-%m-%dT%H:%M:%S'),
+            'CreateDate': datetime.strftime(
+                group['CreateDate'], '%Y-%m-%dT%H:%M:%S'
+            ),
             'Path': group['Path'],
-        })
+        }
+        for group in response['Groups']
+    ]
 
     ec = {'AWS.IAM.Users(val.UserName === obj.UserName).Groups': data}
     human_readable = tableToMarkdown('AWS IAM User Groups', data)
@@ -320,15 +320,18 @@ def list_access_key_for_user(args, aws_client):  # pragma: no cover
         role_session_name=args.get('roleSessionName'),
         role_session_duration=args.get('roleSessionDuration'),
     )
-    data = []
     response = client.list_access_keys(UserName=args.get('userName'))
-    for accesskey in response['AccessKeyMetadata']:
-        data.append({
+    data = [
+        {
             'UserName': accesskey['UserName'],
             'AccessKeyId': accesskey['AccessKeyId'],
             'Status': accesskey['Status'],
-            'CreateDate': datetime.strftime(accesskey['CreateDate'], '%Y-%m-%dT%H:%M:%S')
-        })
+            'CreateDate': datetime.strftime(
+                accesskey['CreateDate'], '%Y-%m-%dT%H:%M:%S'
+            ),
+        }
+        for accesskey in response['AccessKeyMetadata']
+    ]
 
     ec = {'AWS.IAM.Users(val.UserName === obj.UserName).AccessKeys': data}
     human_readable = tableToMarkdown('AWS IAM Users Access Keys', data)
@@ -342,13 +345,13 @@ def list_policies(args, aws_client):  # pragma: no cover
         role_session_name=args.get('roleSessionName'),
         role_session_duration=args.get('roleSessionDuration'),
     )
-    data = []
     response = client.list_policies(
         Scope=args.get('scope'),
-        OnlyAttached=True if args.get('onlyAttached') == 'True' else False
+        OnlyAttached=args.get('onlyAttached') == 'True',
     )
-    for policy in response['Policies']:
-        data.append({
+
+    data = [
+        {
             'PolicyName': policy['PolicyName'],
             'PolicyId': policy['PolicyId'],
             'Arn': policy['Arn'],
@@ -356,9 +359,16 @@ def list_policies(args, aws_client):  # pragma: no cover
             'DefaultVersionId': policy['DefaultVersionId'],
             'IsAttachable': policy['IsAttachable'],
             'AttachmentCount': policy['AttachmentCount'],
-            'CreateDate': datetime.strftime(policy['CreateDate'], '%Y-%m-%dT%H:%M:%S'),
-            'UpdateDate': datetime.strftime(policy['UpdateDate'], '%Y-%m-%dT%H:%M:%S'),
-        })
+            'CreateDate': datetime.strftime(
+                policy['CreateDate'], '%Y-%m-%dT%H:%M:%S'
+            ),
+            'UpdateDate': datetime.strftime(
+                policy['UpdateDate'], '%Y-%m-%dT%H:%M:%S'
+            ),
+        }
+        for policy in response['Policies']
+    ]
+
     ec = {'AWS.IAM.Policies': data}
     human_readable = tableToMarkdown('AWS IAM Policies', data)
     return_outputs(human_readable, ec)
@@ -513,8 +523,7 @@ def create_instance_profile(args, aws_client):  # pragma: no cover
     )
     kwargs = {'InstanceProfileName': args.get('instanceProfileName')}
     if args.get('path') is not None:
-        kwargs.update({'Path': args.get('path')})
-
+        kwargs['Path'] = args.get('path')
     response = client.create_instance_profile(**kwargs)
     instanceProfile = response['InstanceProfile']
     data = ({
@@ -707,11 +716,11 @@ def create_role(args, aws_client):  # pragma: no cover
         'AssumeRolePolicyDocument': json.dumps(json.loads(args.get('assumeRolePolicyDocument')))
     }
     if args.get('path') is not None:
-        kwargs.update({'Path': args.get('path')})
+        kwargs['Path'] = args.get('path')
     if args.get('description') is not None:
-        kwargs.update({'Description': args.get('description')})
+        kwargs['Description'] = args.get('description')
     if args.get('maxSessionDuration') is not None:
-        kwargs.update({'MaxSessionDuration': int(args.get('maxSessionDuration'))})
+        kwargs['MaxSessionDuration'] = int(args.get('maxSessionDuration'))
     # return kwargs
     response = client.create_role(**kwargs)
     role = response['Role']
@@ -741,10 +750,9 @@ def create_policy(args, aws_client):  # pragma: no cover
         'PolicyDocument': json.dumps(json.loads(args.get('policyDocument')))
     }
     if args.get('path') is not None:
-        kwargs.update({'Path': args.get('path')})
+        kwargs['Path'] = args.get('path')
     if args.get('description') is not None:
-        kwargs.update({'Description': args.get('description')})
-
+        kwargs['Description'] = args.get('description')
     response = client.create_policy(**kwargs)
     policy = response['Policy']
     data = ({
@@ -787,8 +795,7 @@ def create_policy_version(args, aws_client):  # pragma: no cover
         'PolicyDocument': json.dumps(json.loads(args.get('policyDocument')))
     }
     if args.get('setAsDefault') is not None:
-        kwargs.update({'SetAsDefault': True if args.get('setAsDefault') == 'True' else False})
-
+        kwargs['SetAsDefault'] = args.get('setAsDefault') == 'True'
     response = client.create_policy_version(**kwargs)
     policy = response['PolicyVersion']
     data = ({
@@ -827,15 +834,19 @@ def list_policy_versions(args, aws_client):  # pragma: no cover
         role_session_name=args.get('roleSessionName'),
         role_session_duration=args.get('roleSessionDuration'),
     )
-    data = []
     response = client.list_policy_versions(PolicyArn=args.get('policyArn'))
-    for version in response['Versions']:
-        data.append({
+    data = [
+        {
             'PolicyArn': args.get('policyArn'),
             'VersionId': version['VersionId'],
             'IsDefaultVersion': version['IsDefaultVersion'],
-            'CreateDate': datetime.strftime(version['CreateDate'], '%Y-%m-%dT%H:%M:%S'),
-        })
+            'CreateDate': datetime.strftime(
+                version['CreateDate'], '%Y-%m-%dT%H:%M:%S'
+            ),
+        }
+        for version in response['Versions']
+    ]
+
     ec = {'AWS.IAM.Policies(val.PolicyArn === obj.PolicyArn).Versions': data}
     human_readable = tableToMarkdown('AWS IAM Policy Versions', data)
     return_outputs(human_readable, ec)
@@ -848,20 +859,24 @@ def get_policy_version(args, aws_client):  # pragma: no cover
         role_session_name=args.get('roleSessionName'),
         role_session_duration=args.get('roleSessionDuration'),
     )
-    data = []
     kwargs = {
         'PolicyArn': args.get('policyArn'),
         'VersionId': args.get('versionId')
     }
     response = client.get_policy_version(**kwargs)
     version = response['PolicyVersion']
-    data.append({
-        'PolicyArn': args.get('policyArn'),
-        'Document': version['Document'],
-        'VersionId': version['VersionId'],
-        'IsDefaultVersion': version['IsDefaultVersion'],
-        'CreateDate': datetime.strftime(version['CreateDate'], '%Y-%m-%dT%H:%M:%S'),
-    })
+    data = [
+        {
+            'PolicyArn': args.get('policyArn'),
+            'Document': version['Document'],
+            'VersionId': version['VersionId'],
+            'IsDefaultVersion': version['IsDefaultVersion'],
+            'CreateDate': datetime.strftime(
+                version['CreateDate'], '%Y-%m-%dT%H:%M:%S'
+            ),
+        }
+    ]
+
     ec = {'AWS.IAM.Policies(val.PolicyArn === obj.PolicyArn).Versions': data}
     human_readable = tableToMarkdown('AWS IAM Policy Version', data)
     return_outputs(human_readable, ec)
@@ -941,26 +956,32 @@ def update_account_password_policy(args, aws_client):  # pragma: no cover
     if 'ExpirePasswords' in kwargs:
         kwargs.pop('ExpirePasswords')
     if args.get('minimumPasswordLength'):
-        kwargs.update({'MinimumPasswordLength': int(args.get('minimumPasswordLength'))})
+        kwargs['MinimumPasswordLength'] = int(args.get('minimumPasswordLength'))
     if args.get('requireSymbols'):
-        kwargs.update({'RequireSymbols': True if args.get('requireSymbols') == 'True' else False})
+        kwargs['RequireSymbols'] = args.get('requireSymbols') == 'True'
     if args.get('requireNumbers'):
-        kwargs.update({'RequireNumbers': True if args.get('requireNumbers') == 'True' else False})
+        kwargs['RequireNumbers'] = args.get('requireNumbers') == 'True'
     if args.get('requireUppercaseCharacters'):
-        kwargs.update(
-            {'RequireUppercaseCharacters': True if args.get('requireUppercaseCharacters') == 'True' else False})
+        kwargs['RequireUppercaseCharacters'] = (
+            args.get('requireUppercaseCharacters') == 'True'
+        )
+
     if args.get('requireLowercaseCharacters'):
-        kwargs.update(
-            {'RequireLowercaseCharacters': True if args.get('requireLowercaseCharacters') == 'True' else False})
+        kwargs['RequireLowercaseCharacters'] = (
+            args.get('requireLowercaseCharacters') == 'True'
+        )
+
     if args.get('allowUsersToChangePassword'):
-        kwargs.update(
-            {'AllowUsersToChangePassword': True if args.get('allowUsersToChangePassword') == 'True' else False})
+        kwargs['AllowUsersToChangePassword'] = (
+            args.get('allowUsersToChangePassword') == 'True'
+        )
+
     if args.get('maxPasswordAge'):
-        kwargs.update({'MaxPasswordAge': int(args.get('maxPasswordAge'))})
+        kwargs['MaxPasswordAge'] = int(args.get('maxPasswordAge'))
     if args.get('passwordReusePrevention'):
-        kwargs.update({'PasswordReusePrevention': int(args.get('passwordReusePrevention'))})
+        kwargs['PasswordReusePrevention'] = int(args.get('passwordReusePrevention'))
     if args.get('hardExpiry'):
-        kwargs.update({'HardExpiry': True if args.get('hardExpiry') == 'True' else False})
+        kwargs['HardExpiry'] = args.get('hardExpiry') == 'True'
     response = client.update_account_password_policy(**kwargs)
     if response['ResponseMetadata']['HTTPStatusCode'] == 200:
         demisto.results("The Account Password Policy was updated")
@@ -1047,8 +1068,7 @@ def list_user_policies(args, aws_client):
         'MaxItems': limit
     }
     if marker:
-        kwargs.update({'Marker': marker})
-
+        kwargs['Marker'] = marker
     response = client.list_user_policies(**kwargs)
     data = response.get('PolicyNames', [])
     marker = response.get('Marker', None)
@@ -1091,8 +1111,7 @@ def list_attached_user_policies(args, aws_client):
         'MaxItems': limit
     }
     if marker:
-        kwargs.update({'Marker': marker})
-
+        kwargs['Marker'] = marker
     response = client.list_attached_user_policies(**kwargs)
     data = response.get('AttachedPolicies', [])
     marker = response.get('Marker', None)
@@ -1137,8 +1156,7 @@ def list_attached_group_policies(args, aws_client):
         'MaxItems': limit
     }
     if marker:
-        kwargs.update({'Marker': marker})
-
+        kwargs['Marker'] = marker
     response = client.list_attached_group_policies(**kwargs)
     data = response.get('AttachedPolicies', [])
     marker = response.get('Marker')

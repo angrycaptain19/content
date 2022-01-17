@@ -57,7 +57,7 @@ def parse_time(time_str):
 
 
 def http_request(method, url_suffix, params=None, headers=None, data=None, **kwargs):
-    data = data if data else {}
+    data = data or {}
     if not headers:
         headers = HEADERS
         headers['Authorization'] = 'Bearer ' + AUTH_TOKEN
@@ -107,11 +107,7 @@ def get_time_range(time_frame=None, start_time=None, end_time=None):
         else:
             start_time = dateparser.parse(start_time)
 
-        if end_time is None:
-            end_time = datetime.now()
-        else:
-            end_time = dateparser.parse(end_time)
-
+        end_time = datetime.now() if end_time is None else dateparser.parse(end_time)
         return date_to_timestamp(start_time), date_to_timestamp(end_time)
 
     end_time = datetime.now()
@@ -229,11 +225,8 @@ def parse_events(events_data):
     regex = re.compile(r'.*"signature": "([\w\s]*)"')
     events = []
     for event in events_data:
-        event_name = ''
         match = regex.match(event.get('log', ''))
-        if match:
-            event_name = match.group(1)
-
+        event_name = match.group(1) if match else ''
         events.append({
             'ID': event.get('uuid'),
             'Name': event_name,
@@ -281,14 +274,12 @@ def item_to_incident(item):
             item.get('timestamp_occured', ''),
             item.get("time_offset", 'Z')
         )
-    incident = {
+    return {
         'Type': 'AlienVault USM',
         'name': 'Alarm: ' + item.get('uuid'),
         'occurred': occurred,
         'rawJSON': json.dumps(item),
     }
-
-    return incident
 
 
 ''' COMMANDS + REQUESTS FUNCTIONS '''
@@ -325,9 +316,7 @@ def get_alarm_command():
 
 
 def get_alarm(alarm_id):
-    res = http_request('GET', '/alarms/' + alarm_id)
-
-    return res
+    return http_request('GET', '/alarms/' + alarm_id)
 
 
 def search_alarms_command():
@@ -524,5 +513,5 @@ def main():
 
 
 # python2 uses __builtin__ python3 uses builtins
-if __name__ == "__builtin__" or __name__ == "builtins":
+if __name__ in ["__builtin__", "builtins"]:
     main()

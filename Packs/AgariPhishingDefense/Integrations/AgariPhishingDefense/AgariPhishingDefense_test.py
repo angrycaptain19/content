@@ -70,7 +70,7 @@ def mock_http_response(status=200, headers=None, json_data=None, raise_for_statu
     mock_resp.content = content
     if headers:
         mock_resp.headers = headers
-    mock_resp.ok = True if status < 400 else False
+    mock_resp.ok = status < 400
     # add json data if provided
     if json_data:
         mock_resp.json = mock.Mock(
@@ -661,21 +661,17 @@ def test_fetch_incident_command_success(mock_api_token, mock_request, client):
     from AgariPhishingDefense import fetch_incidents
 
     mock_api_token.return_value = API_TOKEN, 14400
+    with open('test_data/get_fetch_response.json') as f:
+        expected_res = json.load(f)
     args = {
         'start_date': '',
         'id': '',
         'fetch_limit': '1',
         'policy_filter': ''
     }
-
-    with open('test_data/get_fetch_response.json') as f:
-        expected_res = json.load(f)
     mock_request.side_effect = expected_res
-
-    ans = []
     cmd_res_next_run, incidents = fetch_incidents(client, {}, args)
-    ans.append(cmd_res_next_run)
-    ans.append(incidents)
+    ans = [cmd_res_next_run, incidents]
     assert ans == expected_res[3]
 
 

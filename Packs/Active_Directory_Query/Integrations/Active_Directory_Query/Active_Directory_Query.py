@@ -346,8 +346,7 @@ def modify_user_ou(dn, new_ou):
     assert conn is not None
     cn = dn.split(',', 1)[0]
 
-    success = conn.modify_dn(dn, cn, new_superior=new_ou)
-    return success
+    return conn.modify_dn(dn, cn, new_superior=new_ou)
 
 
 def get_all_attributes(search_base):
@@ -359,7 +358,7 @@ def get_all_attributes(search_base):
     if not r[0]:
         return []
     attributes = r[0].allowedAttributes
-    return [attr for attr in attributes]
+    return list(attributes)
 
 
 ''' COMMANDS '''
@@ -1172,9 +1171,7 @@ def update_user(default_base_dn):
     search_base = args.get('base-dn') or default_base_dn
     dn = user_dn(sam_account_name, search_base)
 
-    modification = {}
-    modification[attribute_name] = [('MODIFY_REPLACE', attribute_value)]
-
+    modification = {attribute_name: [('MODIFY_REPLACE', attribute_value)]}
     # modify user
     modify_object(dn, modification)
 
@@ -1210,8 +1207,11 @@ def update_contact():
     args = demisto.args()
 
     contact_dn = args.get('contact-dn')
-    modification = {}
-    modification[args.get('attribute-name')] = [('MODIFY_REPLACE', args.get('attribute-value'))]
+    modification = {
+        args.get('attribute-name'): [
+            ('MODIFY_REPLACE', args.get('attribute-value'))
+        ]
+    }
 
     # modify
     modify_object(contact_dn, modification)

@@ -25,13 +25,10 @@ endpoint_name = demisto.params()['EndpointName']
 
 
 def parse_results(result):
-    res = []
-    for r in result:
-        res.append({
+    return [{
             'Label': r['label'][0],
             'Probability': r['probability']
-        })
-    return res
+        } for r in result]
 
 
 if demisto.command() == 'test-module':

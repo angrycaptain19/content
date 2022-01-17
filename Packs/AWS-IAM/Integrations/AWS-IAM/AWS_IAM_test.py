@@ -81,13 +81,10 @@ def test_list_user_policies(mocker, args, res):
         'Marker': '111'
     }
 
-    policy_data = []
-    for policy in res:
-        policy_data.append({
+    policy_data = [{
             'UserName': 'test',
             'PolicyName': policy,
-        })
-
+        } for policy in res]
     mocker.patch.object(AWSClient, "aws_session", return_value=Boto3Client())
     mocker.patch.object(Boto3Client, "list_user_policies", return_value=response)
     mocker.patch.object(demisto, 'results')

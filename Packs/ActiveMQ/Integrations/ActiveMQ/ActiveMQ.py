@@ -52,13 +52,16 @@ def create_connection(client_cert, client_key, root_ca):
         with open(root_ca_path, 'wb') as file:
             file.write(root_ca)
 
-    if client_cert or client_key or root_ca:
-        conn = stomp.Connection(host_and_ports=[(HOSTNAME, PORT)], use_ssl=True,
-                                ssl_key_file=client_key_path, ssl_cert_file=client_path)
-    else:
-        conn = stomp.Connection([(HOSTNAME, PORT)])
-
-    return conn
+    return (
+        stomp.Connection(
+            host_and_ports=[(HOSTNAME, PORT)],
+            use_ssl=True,
+            ssl_key_file=client_key_path,
+            ssl_cert_file=client_path,
+        )
+        if client_cert or client_key or root_ca
+        else stomp.Connection([(HOSTNAME, PORT)])
+    )
 
 
 def connect(conn, client_id=None):
@@ -69,10 +72,7 @@ def connect(conn, client_id=None):
             conn.connect(USERNAME, PASSWORD, wait=True)
 
     elif CLIENT_KEY or CLIENT_CERT or ROOT_CA:
-        if client_id and len(client_id) > 0:
-            conn.connect(wait=True)  # , headers = {'client-id': client_id })
-        else:
-            conn.connect(wait=True)
+        conn.connect(wait=True)  # , headers = {'client-id': client_id })
     else:
         raise ValueError('You must provide username/password or certificates')
 

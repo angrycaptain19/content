@@ -23,43 +23,41 @@ def main():
         if is_error(pwd_generation_script_output):
             raise Exception(f'An error occurred while trying to generate a new password for the user. '
                             f'Error is:\n{get_error(pwd_generation_script_output)}')
+        password_output = demisto.get(pwd_generation_script_output[0], 'Contents')
+        if isinstance(password_output, dict):
+            password = password_output.get("NEW_PASSWORD")
+        elif isinstance(password_output, str):
+            password = password_output
         else:
-            password_output = demisto.get(pwd_generation_script_output[0], 'Contents')
-            if isinstance(password_output, dict):
-                password = password_output.get("NEW_PASSWORD")
-            elif isinstance(password_output, str):
-                password = password_output
-            else:
-                raise Exception(f'Could not parse the generated password from {pwd_generation_script} outputs. '
-                                f'Please make sure the output of the script is a string.')
+            raise Exception(f'Could not parse the generated password from {pwd_generation_script} outputs. '
+                            f'Please make sure the output of the script is a string.')
 
-            # set a new password
-            ad_create_user_arguments = {
-                'username': username,
-                'password': password,
-                'attribute-name': 'pwdLastSet',
-                'attribute-value': -1
-            }
+        # set a new password
+        ad_create_user_arguments = {
+            'username': username,
+            'password': password,
+            'attribute-name': 'pwdLastSet',
+            'attribute-value': -1
+        }
 
-            set_password_outputs = demisto.executeCommand("ad-set-new-password", ad_create_user_arguments)
-            if is_error(set_password_outputs):
-                err = get_error(set_password_outputs)
-                if '5003' in err:
-                    raise Exception(f"An error occurred while trying to set a new password for the user. "
-                                    f"Please make sure that \"{pwd_generation_script}\" script "
-                                    f"complies with your domain's password complexity policy.")
+        set_password_outputs = demisto.executeCommand("ad-set-new-password", ad_create_user_arguments)
+        if is_error(set_password_outputs):
+            err = get_error(set_password_outputs)
+            if '5003' in err:
                 raise Exception(f"An error occurred while trying to set a new password for the user. "
-                                f"Error is:\n{err}")
-            else:
-                enable_outputs = demisto.executeCommand("ad-enable-account", ad_create_user_arguments)
-                if is_error(enable_outputs):
-                    raise Exception(f'An error occurred while trying to enable the user account. '
-                                    f'Error is:\n{get_error(enable_outputs)}')
-                else:
-                    update_outputs = demisto.executeCommand("ad-update-user", ad_create_user_arguments)
-                    if is_error(update_outputs):
-                        raise Exception(f'An error occurred while trying to update the user account. '
-                                        f'Error is:\n{get_error(update_outputs)}')
+                                f"Please make sure that \"{pwd_generation_script}\" script "
+                                f"complies with your domain's password complexity policy.")
+            raise Exception(f"An error occurred while trying to set a new password for the user. "
+                            f"Error is:\n{err}")
+        else:
+            enable_outputs = demisto.executeCommand("ad-enable-account", ad_create_user_arguments)
+            if is_error(enable_outputs):
+                raise Exception(f'An error occurred while trying to enable the user account. '
+                                f'Error is:\n{get_error(enable_outputs)}')
+            update_outputs = demisto.executeCommand("ad-update-user", ad_create_user_arguments)
+            if is_error(update_outputs):
+                raise Exception(f'An error occurred while trying to update the user account. '
+                                f'Error is:\n{get_error(update_outputs)}')
         outputs['success'] = True
 
     except Exception as e:

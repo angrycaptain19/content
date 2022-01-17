@@ -46,40 +46,44 @@ def aws_session(service='cloudtrail', region=None, roleArn=None, roleSessionName
         })
 
     if roleSessionDuration is not None:
-        kwargs.update({'DurationSeconds': int(roleSessionDuration)})
+        kwargs['DurationSeconds'] = int(roleSessionDuration)
     elif AWS_ROLE_SESSION_DURATION is not None:
-        kwargs.update({'DurationSeconds': int(AWS_ROLE_SESSION_DURATION)})
-
+        kwargs['DurationSeconds'] = int(AWS_ROLE_SESSION_DURATION)
     if rolePolicy is not None:
-        kwargs.update({'Policy': rolePolicy})
+        kwargs['Policy'] = rolePolicy
     elif AWS_ROLE_POLICY is not None:
-        kwargs.update({'Policy': AWS_ROLE_POLICY})
+        kwargs['Policy'] = AWS_ROLE_POLICY
     if kwargs and not AWS_ACCESS_KEY_ID:
 
-        if not AWS_ACCESS_KEY_ID:
-            sts_client = boto3.client('sts', config=config, verify=VERIFY_CERTIFICATE,
-                                      region_name=AWS_DEFAULT_REGION)
-            sts_response = sts_client.assume_role(**kwargs)
-            if region is not None:
-                client = boto3.client(
-                    service_name=service,
-                    region_name=region,
-                    aws_access_key_id=sts_response['Credentials']['AccessKeyId'],
-                    aws_secret_access_key=sts_response['Credentials']['SecretAccessKey'],
-                    aws_session_token=sts_response['Credentials']['SessionToken'],
-                    verify=VERIFY_CERTIFICATE,
-                    config=config
-                )
-            else:
-                client = boto3.client(
-                    service_name=service,
-                    region_name=AWS_DEFAULT_REGION,
-                    aws_access_key_id=sts_response['Credentials']['AccessKeyId'],
-                    aws_secret_access_key=sts_response['Credentials']['SecretAccessKey'],
-                    aws_session_token=sts_response['Credentials']['SessionToken'],
-                    verify=VERIFY_CERTIFICATE,
-                    config=config
-                )
+        sts_client = boto3.client('sts', config=config, verify=VERIFY_CERTIFICATE,
+                                  region_name=AWS_DEFAULT_REGION)
+        sts_response = sts_client.assume_role(**kwargs)
+        return (
+            boto3.client(
+                service_name=service,
+                region_name=region,
+                aws_access_key_id=sts_response['Credentials']['AccessKeyId'],
+                aws_secret_access_key=sts_response['Credentials'][
+                    'SecretAccessKey'
+                ],
+                aws_session_token=sts_response['Credentials']['SessionToken'],
+                verify=VERIFY_CERTIFICATE,
+                config=config,
+            )
+            if region is not None
+            else boto3.client(
+                service_name=service,
+                region_name=AWS_DEFAULT_REGION,
+                aws_access_key_id=sts_response['Credentials']['AccessKeyId'],
+                aws_secret_access_key=sts_response['Credentials'][
+                    'SecretAccessKey'
+                ],
+                aws_session_token=sts_response['Credentials']['SessionToken'],
+                verify=VERIFY_CERTIFICATE,
+                config=config,
+            )
+        )
+
     elif AWS_ACCESS_KEY_ID and AWS_ROLE_ARN:
         sts_client = boto3.client(
             service_name='sts',
@@ -93,7 +97,7 @@ def aws_session(service='cloudtrail', region=None, roleArn=None, roleSessionName
             'RoleSessionName': AWS_ROLE_SESSION_NAME,
         })
         sts_response = sts_client.assume_role(**kwargs)
-        client = boto3.client(
+        return boto3.client(
             service_name=service,
             region_name=AWS_DEFAULT_REGION,
             aws_access_key_id=sts_response['Credentials']['AccessKeyId'],
@@ -102,9 +106,8 @@ def aws_session(service='cloudtrail', region=None, roleArn=None, roleSessionName
             verify=VERIFY_CERTIFICATE,
             config=config
         )
-    else:
-        if region is not None:
-            client = boto3.client(
+    elif region is not None:
+        return boto3.client(
                 service_name=service,
                 region_name=region,
                 aws_access_key_id=AWS_ACCESS_KEY_ID,
@@ -112,8 +115,8 @@ def aws_session(service='cloudtrail', region=None, roleArn=None, roleSessionName
                 verify=VERIFY_CERTIFICATE,
                 config=config
             )
-        else:
-            client = boto3.client(
+    else:
+        return boto3.client(
                 service_name=service,
                 region_name=AWS_DEFAULT_REGION,
                 aws_access_key_id=AWS_ACCESS_KEY_ID,
@@ -122,18 +125,11 @@ def aws_session(service='cloudtrail', region=None, roleArn=None, roleSessionName
                 config=config
             )
 
-    return client
-
 
 def handle_returning_date_to_string(date_obj):
     """Gets date object to string"""
     # if the returning date is a string leave it as is.
-    if isinstance(date_obj, str):
-        return date_obj
-
-    # if event time is datetime object - convert it to string.
-    else:
-        return date_obj.isoformat()
+    return date_obj if isinstance(date_obj, str) else date_obj.isoformat()
 
 
 class DatetimeEncoder(json.JSONEncoder):
@@ -149,8 +145,7 @@ class DatetimeEncoder(json.JSONEncoder):
 
 def parse_resource_ids(resource_id):
     id_list = resource_id.replace(" ", "")
-    resource_ids = id_list.split(",")
-    return resource_ids
+    return id_list.split(",")
 
 
 def create_trail(args):
@@ -167,25 +162,23 @@ def create_trail(args):
     }
 
     if args.get('s3KeyPrefix') is not None:
-        kwargs.update({'S3KeyPrefix': args.get('s3KeyPrefix')})
+        kwargs['S3KeyPrefix'] = args.get('s3KeyPrefix')
     if args.get('snsTopicName') is not None:
-        kwargs.update({'SnsTopicName': args.get('snsTopicName')})
+        kwargs['SnsTopicName'] = args.get('snsTopicName')
     if args.get('includeGlobalServiceEvents') is not None:
-        kwargs.update({'IncludeGlobalServiceEvents': True if args.get(
-            'includeGlobalServiceEvents') == 'True' else False})
+        kwargs['IncludeGlobalServiceEvents'] = args.get(
+            'includeGlobalServiceEvents') == 'True'
     if args.get('isMultiRegionTrail') is not None:
-        kwargs.update(
-            {'IsMultiRegionTrail': True if args.get('isMultiRegionTrail') == 'True' else False})
+        kwargs['IsMultiRegionTrail'] = args.get('isMultiRegionTrail') == 'True'
     if args.get('enableLogFileValidation') is not None:
-        kwargs.update({'EnableLogFileValidation': True if args.get(
-            'enableLogFileValidation') == 'True' else False})
+        kwargs['EnableLogFileValidation'] = args.get(
+            'enableLogFileValidation') == 'True'
     if args.get('cloudWatchLogsLogGroupArn') is not None:
-        kwargs.update({'CloudWatchLogsLogGroupArn': args.get('cloudWatchLogsLogGroupArn')})
+        kwargs['CloudWatchLogsLogGroupArn'] = args.get('cloudWatchLogsLogGroupArn')
     if args.get('cloudWatchLogsRoleArn') is not None:
-        kwargs.update({'CloudWatchLogsRoleArn': args.get('cloudWatchLogsRoleArn')})
+        kwargs['CloudWatchLogsRoleArn'] = args.get('cloudWatchLogsRoleArn')
     if args.get('kmsKeyId') is not None:
-        kwargs.update({'KmsKeyId': args.get('kmsKeyId')})
-
+        kwargs['KmsKeyId'] = args.get('kmsKeyId')
     response = client.create_trail(**kwargs)
 
     data = ({
@@ -198,18 +191,17 @@ def create_trail(args):
         'HomeRegion': obj['_user_provided_options']['region_name']
     })
     if 'SnsTopicName' in response:
-        data.update({'SnsTopicName': response['SnsTopicName']})
+        data['SnsTopicName'] = response['SnsTopicName']
     if 'S3KeyPrefix' in response:
-        data.update({'S3KeyPrefix': response['S3KeyPrefix']})
+        data['S3KeyPrefix'] = response['S3KeyPrefix']
     if 'SnsTopicARN' in response:
-        data.update({'SnsTopicARN': response['SnsTopicARN']})
+        data['SnsTopicARN'] = response['SnsTopicARN']
     if 'CloudWatchLogsLogGroupArn' in response:
-        data.update({'CloudWatchLogsLogGroupArn': response['CloudWatchLogsLogGroupArn']})
+        data['CloudWatchLogsLogGroupArn'] = response['CloudWatchLogsLogGroupArn']
     if 'CloudWatchLogsRoleArn' in response:
-        data.update({'CloudWatchLogsRoleArn': response['CloudWatchLogsRoleArn']})
+        data['CloudWatchLogsRoleArn'] = response['CloudWatchLogsRoleArn']
     if 'KmsKeyId' in response:
-        data.update({'KmsKeyId': response['KmsKeyId']})
-
+        data['KmsKeyId'] = response['KmsKeyId']
     ec = {'AWS.CloudTrail.Trails(val.Name == obj.Name)': data}
     human_readable = tableToMarkdown('AWS CloudTrail Trails', data)
     return_outputs(human_readable, ec)
@@ -243,11 +235,10 @@ def describe_trails(args):
     data = []
     output = []
     if args.get('trailNameList') is not None:
-        kwargs.update({'trailNameList': parse_resource_ids(args.get('trailNameList'))})
+        kwargs['trailNameList'] = parse_resource_ids(args.get('trailNameList'))
     if args.get('includeShadowTrails') is not None:
-        kwargs.update({'includeShadowTrails': True if args.get(
-            'includeShadowTrails') == 'True' else False})
-
+        kwargs['includeShadowTrails'] = args.get(
+            'includeShadowTrails') == 'True'
     response = client.describe_trails(**kwargs)
     for trail in response['trailList']:
         data.append({
@@ -280,27 +271,25 @@ def update_trail(args):
     }
 
     if args.get('s3BucketName') is not None:
-        kwargs.update({'S3BucketName': args.get('s3BucketName')})
+        kwargs['S3BucketName'] = args.get('s3BucketName')
     if args.get('s3KeyPrefix') is not None:
-        kwargs.update({'S3KeyPrefix': args.get('s3KeyPrefix')})
+        kwargs['S3KeyPrefix'] = args.get('s3KeyPrefix')
     if args.get('snsTopicName') is not None:
-        kwargs.update({'SnsTopicName': args.get('snsTopicName')})
+        kwargs['SnsTopicName'] = args.get('snsTopicName')
     if args.get('includeGlobalServiceEvents') is not None:
-        kwargs.update({'IncludeGlobalServiceEvents': True if args.get(
-            'includeGlobalServiceEvents') == 'True' else False})
+        kwargs['IncludeGlobalServiceEvents'] = args.get(
+            'includeGlobalServiceEvents') == 'True'
     if args.get('isMultiRegionTrail') is not None:
-        kwargs.update(
-            {'IsMultiRegionTrail': True if args.get('isMultiRegionTrail') == 'True' else False})
+        kwargs['IsMultiRegionTrail'] = args.get('isMultiRegionTrail') == 'True'
     if args.get('enableLogFileValidation') is not None:
-        kwargs.update({'EnableLogFileValidation': True if args.get(
-            'enableLogFileValidation') == 'True' else False})
+        kwargs['EnableLogFileValidation'] = args.get(
+            'enableLogFileValidation') == 'True'
     if args.get('cloudWatchLogsLogGroupArn') is not None:
-        kwargs.update({'CloudWatchLogsLogGroupArn': args.get('cloudWatchLogsLogGroupArn')})
+        kwargs['CloudWatchLogsLogGroupArn'] = args.get('cloudWatchLogsLogGroupArn')
     if args.get('cloudWatchLogsRoleArn') is not None:
-        kwargs.update({'CloudWatchLogsRoleArn': args.get('cloudWatchLogsRoleArn')})
+        kwargs['CloudWatchLogsRoleArn'] = args.get('cloudWatchLogsRoleArn')
     if args.get('kmsKeyId') is not None:
-        kwargs.update({'KmsKeyId': args.get('kmsKeyId')})
-
+        kwargs['KmsKeyId'] = args.get('kmsKeyId')
     response = client.update_trail(**kwargs)
 
     data = ({
@@ -313,18 +302,17 @@ def update_trail(args):
         'HomeRegion': obj['_user_provided_options']['region_name']
     })
     if 'SnsTopicName' in response:
-        data.update({'SnsTopicName': response['SnsTopicName']})
+        data['SnsTopicName'] = response['SnsTopicName']
     if 'S3KeyPrefix' in response:
-        data.update({'S3KeyPrefix': response['S3KeyPrefix']})
+        data['S3KeyPrefix'] = response['S3KeyPrefix']
     if 'SnsTopicARN' in response:
-        data.update({'SnsTopicARN': response['SnsTopicARN']})
+        data['SnsTopicARN'] = response['SnsTopicARN']
     if 'CloudWatchLogsLogGroupArn' in response:
-        data.update({'CloudWatchLogsLogGroupArn': response['CloudWatchLogsLogGroupArn']})
+        data['CloudWatchLogsLogGroupArn'] = response['CloudWatchLogsLogGroupArn']
     if 'CloudWatchLogsRoleArn' in response:
-        data.update({'CloudWatchLogsRoleArn': response['CloudWatchLogsRoleArn']})
+        data['CloudWatchLogsRoleArn'] = response['CloudWatchLogsRoleArn']
     if 'KmsKeyId' in response:
-        data.update({'KmsKeyId': response['KmsKeyId']})
-
+        data['KmsKeyId'] = response['KmsKeyId']
     ec = {'AWS.CloudTrail.Trails(val.Name == obj.Name)': data}
     human_readable = tableToMarkdown('AWS CloudTrail Trails', data)
     return_outputs(human_readable, ec)
@@ -378,12 +366,10 @@ def lookup_events(args):
     }
 
     if args.get('startTime') is not None:
-        kwargs.update({'StartTime': datetime.strptime(args.get('startTime'),  # type:ignore
-                                                      "%Y-%m-%dT%H:%M:%S")})
+        kwargs['StartTime'] = datetime.strptime(args.get('startTime'),  # type:ignore
+                                                      "%Y-%m-%dT%H:%M:%S")
     if args.get('endTime') is not None:
-        kwargs.update(
-            {'EndTime': datetime.strptime(args.get('endTime'), "%Y-%m-%dT%H:%M:%S")})  # type:ignore
-
+        kwargs['EndTime'] = datetime.strptime(args.get('endTime'), "%Y-%m-%dT%H:%M:%S")
     client.lookup_events(**kwargs)
     paginator = client.get_paginator('lookup_events')
     for response in paginator.paginate(**kwargs):

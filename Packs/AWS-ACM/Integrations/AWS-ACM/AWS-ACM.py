@@ -57,8 +57,7 @@ class DatetimeEncoder(json.JSONEncoder):
 
 def parse_resource_ids(resource_id):
     id_list = resource_id.replace(" ", "")
-    resource_ids = id_list.split(",")
-    return resource_ids
+    return id_list.split(",")
 
 
 '''MAIN FUNCTIONS'''
@@ -89,8 +88,7 @@ def describe_certificate(args, aws_client):
     })
 
     if 'Serial' in cert:
-        data.update({'Serial': cert['Serial']})
-
+        data['Serial'] = cert['Serial']
     try:
         raw = json.loads(json.dumps(response['Certificate'], cls=DatetimeEncoder))
     except ValueError as e:
@@ -112,29 +110,25 @@ def list_certificates(args, aws_client):
         role_session_duration=args.get('roleSessionDuration'),
     )
     obj = vars(client._client_config)
-    kwargs = {}
-    data = []
     includes = {}
 
+    kwargs = {}
     if args.get('certificateStatuses') is not None:
-        kwargs.update({'CertificateStatuses': args.get('certificateStatuses')})
+        kwargs['CertificateStatuses'] = args.get('certificateStatuses')
     if args.get('extendedKeyUsage') is not None:
-        includes.update({'extendedKeyUsage': [args.get('extendedKeyUsage')]})
+        includes['extendedKeyUsage'] = [args.get('extendedKeyUsage')]
     if args.get('keyUsage') is not None:
-        includes.update({'keyUsage': [args.get('keyUsage')]})
+        includes['keyUsage'] = [args.get('keyUsage')]
     if args.get('keyTypes') is not None:
-        includes.update({'keyTypes': [args.get('keyTypes')]})
+        includes['keyTypes'] = [args.get('keyTypes')]
     if includes:
-        kwargs.update({'Includes': includes})
-
+        kwargs['Includes'] = includes
     response = client.list_certificates(**kwargs)
-    for cert in response['CertificateSummaryList']:
-        data.append({
+    data = [{
             'CertificateArn': cert['CertificateArn'],
             'DomainName': cert['DomainName'],
             'Region': obj['_user_provided_options']['region_name'],
-        })
-
+        } for cert in response['CertificateSummaryList']]
     ec = {'AWS.ACM.Certificates(val.CertificateArn === obj.CertificateArn)': data}
     human_readable = tableToMarkdown('AWS ACM Certificates', data)
     return_outputs(human_readable, ec)
@@ -188,10 +182,7 @@ def list_tags_for_certificate(args, aws_client):
 
     data = ({'CertificateArn': args.get('certificateArn')})
     for tag in response['Tags']:
-        data.update({
-            tag['Key']: tag['Value']
-        })
-
+        data[tag['Key']] = tag['Value']
     ec = {'AWS.ACM.Certificates(val.CertificateArn === obj.CertificateArn).Tags': data}
     human_readable = tableToMarkdown('AWS ACM Certificate Tags', data)
     return_outputs(human_readable, ec)

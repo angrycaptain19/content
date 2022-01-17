@@ -72,10 +72,7 @@ def output_data(response: dict) -> dict:
 
 
 def results_output_data(results: list) -> list:
-    context_data = []
-    for res in results:
-        context_data.append(output_data(res))
-    return context_data
+    return [output_data(res) for res in results]
 
 
 def output_content(content, print_output, text_filter, headline):
@@ -129,9 +126,10 @@ def inventories_list(client: Client, args: dict) -> CommandResults:
     results = response.get('results', [])
     if not results:
         return CommandResults(
-            readable_output=f"No results were found for the following arguments {str(args)}",
-            raw_response=response
+            readable_output=f'No results were found for the following arguments {args}',
+            raw_response=response,
         )
+
     context_data = results_output_data(results)
     headers = get_headers(context_data)
     return CommandResults(
@@ -145,18 +143,16 @@ def inventories_list(client: Client, args: dict) -> CommandResults:
 
 def hosts_list(client: Client, args: dict) -> CommandResults:
     inventory_id = args.pop('inventory_id', None)
-    if inventory_id:
-        url_suffix = f'inventories/{inventory_id}/hosts/'
-    else:
-        url_suffix = 'hosts/'
+    url_suffix = f'inventories/{inventory_id}/hosts/' if inventory_id else 'hosts/'
     args = {"id" if k == 'host_id' else k: v for k, v in args.items()}  # Rename key name of host id to match api params
     response = client.api_request(method='GET', url_suffix=url_suffix, params=args)
     results = response.get('results', [])
     if not results:
         return CommandResults(
-            readable_output=f"No results were found for the following argument {str(args)}",
-            raw_response=response
+            readable_output=f'No results were found for the following argument {args}',
+            raw_response=response,
         )
+
     context_data = results_output_data(results)
     headers = get_headers(context_data)
     return CommandResults(
@@ -212,9 +208,10 @@ def templates_list(client: Client, args: dict) -> CommandResults:
 
     if not results:
         return CommandResults(
-            readable_output=f"No results were found for the following argument {str(args)}",
-            raw_response=response
+            readable_output=f'No results were found for the following argument {args}',
+            raw_response=response,
         )
+
 
     context_data = results_output_data(results)
     headers = get_headers(context_data)
@@ -234,9 +231,10 @@ def credentials_list(client: Client, args: dict) -> CommandResults:
     results = response.get('results', [])
     if not results:
         return CommandResults(
-            readable_output=f"No results were found for the following argument {str(args)}",
-            raw_response=response
+            readable_output=f'No results were found for the following argument {args}',
+            raw_response=response,
         )
+
 
     context_data = results_output_data(results)
     headers = get_headers(context_data)
@@ -250,7 +248,7 @@ def credentials_list(client: Client, args: dict) -> CommandResults:
 
 def job_template_launch(client: Client, args: dict) -> CommandResults:
 
-    job_template_id = args.get('job_template_id', None)
+    job_template_id = args.get('job_template_id')
     url_suffix = f'job_templates/{job_template_id}/launch/'
 
     extra_vars = json.loads(args.get('extra_variables', None)) if args.get('extra_variables', None) else None
@@ -258,7 +256,7 @@ def job_template_launch(client: Client, args: dict) -> CommandResults:
             "credential": int(args.get("credentials_id", 0)) if args.get("credentials_id", None) else None,
             "extra_vars": extra_vars}
     body = {key: data[key] for key in data if data[key]}
-    demisto.debug(f"Request body is: {str(body)}")
+    demisto.debug(f'Request body is: {body}')
     response = client.api_request(method='POST', url_suffix=url_suffix, json_data=body, ok_codes=[201])
     context_data = output_data(response)
     job_id = context_data.get('id', '')
@@ -275,13 +273,13 @@ def job_template_launch(client: Client, args: dict) -> CommandResults:
 
 
 def job_relaunch(client: Client, args: dict):
-    job_id = args.get('job_id', None)
+    job_id = args.get('job_id')
     url_suffix = f'jobs/{job_id}/relaunch/'
 
     data = {"hosts": args.get("relaunch_hosts", "all"),
             "credential": args.get("credentials_id", None)}
     body = {key: data[key] for key in data if data[key]}
-    demisto.debug(f"Request body is: {str(body)}")
+    demisto.debug(f'Request body is: {body}')
     response = client.api_request(method='POST', url_suffix=url_suffix, json_data=body, ok_codes=[201])
     context_data = output_data(response)
     job_id = context_data.get('id', '')
@@ -298,7 +296,7 @@ def job_relaunch(client: Client, args: dict):
 
 
 def cancel_job(client: Client, args: dict) -> CommandResults:
-    job_id = args.get('job_id', None)
+    job_id = args.get('job_id')
     url_suffix = f'jobs/{job_id}/cancel/'
     client.api_request(method='POST', url_suffix=url_suffix, empty_valid_codes=[202], return_empty_response=True)
     return job_status(client, args)
@@ -350,9 +348,10 @@ def list_job_events(client: Client, args: dict) -> CommandResults:
     results = response.get('results', [])
     if not results:
         return CommandResults(
-            readable_output=f"No results were found for the following arguments {str(args)}",
-            raw_response=response
+            readable_output=f'No results were found for the following arguments {args}',
+            raw_response=response,
         )
+
 
     context_data = results_output_data(results)
     headers = get_headers(context_data)
@@ -418,7 +417,7 @@ def cancel_ad_hoc_command(client: Client, args: dict) -> CommandResults:
 def ad_hoc_command_stdout(client: Client, args: dict) -> CommandResults:
     print_output = argToBoolean(args.get('print_output', 'True'))
     text_filter = args.get('text_filter', '')
-    command_id = args.get('command_id', None)
+    command_id = args.get('command_id')
     url_suffix = f'ad_hoc_commands/{command_id}/stdout/'
     request_params = {"format": "json"}
     response = client.api_request(method='GET', url_suffix=url_suffix, params=request_params)
@@ -509,10 +508,9 @@ def main() -> None:
         elif command in commands:
             return_results(commands[command](client, demisto.args()))
 
-    # Log exceptions and return errors
     except Exception as e:
         demisto.error(traceback.format_exc())  # print the traceback
-        return_error(f'Failed to execute {demisto.command()} command.\nError:\n{str(e)}')
+        return_error(f'Failed to execute {demisto.command()} command.\nError:\n{e}')
 
 
 ''' ENTRY POINT '''

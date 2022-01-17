@@ -30,9 +30,8 @@ def get_ec2_sg_public_rules(group_id, ip_permissions, checked_protocol=None, che
     for rule in ip_permissions:
         # Check protocol
         protocol = get_dict_value(rule, 'IpProtocol')
-        if protocol != '-1':
-            if checked_protocol.lower() != protocol.lower():
-                continue
+        if protocol != '-1' and checked_protocol.lower() != protocol.lower():
+            continue
 
         bad_rule = {
             'groupId': group_id,
@@ -46,11 +45,13 @@ def get_ec2_sg_public_rules(group_id, ip_permissions, checked_protocol=None, che
         from_port = get_dict_value(rule, 'FromPort')
         to_port = get_dict_value(rule, 'ToPort')
         if from_port and to_port:
-            if from_port < checked_from_port and to_port < checked_from_port:
+            if (
+                from_port < checked_from_port
+                and to_port < checked_from_port
+                or from_port > checked_to_port
+                and to_port > checked_to_port
+            ):
                 continue
-            elif from_port > checked_to_port and to_port > checked_to_port:
-                continue
-
             bad_rule.update({
                 'fromPort': from_port,
                 'toPort': to_port
@@ -94,16 +95,8 @@ def main(args):
 
     # If checked from_port or to_port is not specified
     # it will default to 0-65535 (all port)
-    if args.get('fromPort'):
-        from_port = int(args.get('fromPort'))
-    else:
-        from_port = 0
-
-    if args.get('toPort'):
-        to_port = int(args.get('toPort'))
-    else:
-        to_port = 65535
-
+    from_port = int(args.get('fromPort')) if args.get('fromPort') else 0
+    to_port = int(args.get('toPort')) if args.get('toPort') else 65535
     public_rules = get_ec2_sg_public_rules(
         group_id=args.get('groupId'),
         ip_permissions=ip_perms,

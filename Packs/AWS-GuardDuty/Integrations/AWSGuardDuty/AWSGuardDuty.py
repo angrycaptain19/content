@@ -12,8 +12,7 @@ SERVICE = 'guardduty'
 
 def parse_finding_ids(finding_ids):
     id_list = finding_ids.replace(" ", "")
-    findingsids = id_list.split(",")
-    return findingsids
+    return id_list.split(",")
 
 
 class DatetimeEncoder(json.JSONEncoder):
@@ -47,7 +46,7 @@ def raise_error(error):
 
 def create_detector(client, args):
     try:
-        kwargs = {'Enable': True if args.get('enable') == 'True' else False}
+        kwargs = {'Enable': args.get('enable') == 'True'}
         response = client.create_detector(**kwargs)
         data = ({
             'DetectorId': response['DetectorId']
@@ -90,8 +89,9 @@ def update_detector(client, args):
     try:
         response = client.update_detector(
             DetectorId=args.get('detectorId'),
-            Enable=True if args.get('enable') == 'True' else False
+            Enable=args.get('enable') == 'True',
         )
+
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
             return 'The Detector {0} has been Updated'.format(args.get('detectorId'))
 
@@ -117,14 +117,13 @@ def create_ip_set(client, args):
     try:
         kwargs = {'DetectorId': args.get('detectorId')}
         if args.get('activate') is not None:
-            kwargs.update({'Activate': True if args.get('activate') == 'True' else False})
+            kwargs['Activate'] = args.get('activate') == 'True'
         if args.get('format') is not None:
-            kwargs.update({'Format': args.get('format')})
+            kwargs['Format'] = args.get('format')
         if args.get('location') is not None:
-            kwargs.update({'Location': args.get('location')})
+            kwargs['Location'] = args.get('location')
         if args.get('name') is not None:
-            kwargs.update({'Name': args.get('name')})
-
+            kwargs['Name'] = args.get('name')
         response = client.create_ip_set(**kwargs)
 
         data = ({
@@ -158,12 +157,11 @@ def update_ip_set(client, args):
             'IpSetId': args.get('ipSetId')
         }
         if args.get('activate'):
-            kwargs.update({'Activate': True if args.get('activate') == 'True' else False})
+            kwargs['Activate'] = args.get('activate') == 'True'
         if args.get('location'):
-            kwargs.update({'Location': args.get('location')})
+            kwargs['Location'] = args.get('location')
         if args.get('name'):
-            kwargs.update({'Name': args.get('name')})
-
+            kwargs['Name'] = args.get('name')
         response = client.update_ip_set(**kwargs)
 
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
@@ -197,10 +195,7 @@ def get_ip_set(client, args):
 def list_ip_sets(client, args):
     try:
         response = client.list_ip_sets(DetectorId=args.get('detectorId'))
-        data = []
-        data.append({
-            'DetectorId': args.get('detectorId')
-        })
+        data = [{'DetectorId': args.get('detectorId')}]
         for ipset in response['IpSetIds']:
             data.append({
                 'IpSetId': ipset
@@ -216,14 +211,13 @@ def create_threat_intel_set(client, args):
     try:
         kwargs = {'DetectorId': args.get('detectorId')}
         if args.get('activate') is not None:
-            kwargs.update({'Activate': True if args.get('activate') == 'True' else False})
+            kwargs['Activate'] = args.get('activate') == 'True'
         if args.get('format') is not None:
-            kwargs.update({'Format': args.get('format')})
+            kwargs['Format'] = args.get('format')
         if args.get('location') is not None:
-            kwargs.update({'Location': args.get('location')})
+            kwargs['Location'] = args.get('location')
         if args.get('name') is not None:
-            kwargs.update({'Name': args.get('name')})
-
+            kwargs['Name'] = args.get('name')
         response = client.create_threat_intel_set(**kwargs)
 
         data = ({
@@ -279,10 +273,7 @@ def get_threat_intel_set(client, args):
 def list_threat_intel_sets(client, args):
     try:
         response = client.list_threat_intel_sets(DetectorId=args.get('detectorId'))
-        data = []
-        data.append({
-            'DetectorId': args.get('detectorId')
-        })
+        data = [{'DetectorId': args.get('detectorId')}]
         for threatintelset in response['ThreatIntelSetIds']:
             data.append({
                 'ThreatIntelSetId': threatintelset
@@ -303,11 +294,11 @@ def update_threat_intel_set(client, args):
             'ThreatIntelSetId': args.get('threatIntelSetId')
         }
         if args.get('activate'):
-            kwargs.update({'Activate': True if args.get('activate') == 'True' else False})
+            kwargs['Activate'] = args.get('activate') == 'True'
         if args.get('location'):
-            kwargs.update({'Location': args.get('location')})
+            kwargs['Location'] = args.get('location')
         if args.get('name'):
-            kwargs.update({'Name': args.get('name')})
+            kwargs['Name'] = args.get('name')
         response = client.update_threat_intel_set(**kwargs)
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
             return 'The ThreatIntel Set {0} has been Updated'.format(args.get('threatIntelSetId'))
@@ -318,28 +309,22 @@ def update_threat_intel_set(client, args):
 
 def severity_mapping(severity):
     if severity <= 3.9:
-        demistoSevirity = 1
+        return 1
     elif severity >= 4 and severity <= 6.9:
-        demistoSevirity = 2
+        return 2
     elif severity >= 7 and severity <= 8.9:
-        demistoSevirity = 3
+        return 3
     else:
-        demistoSevirity = 0
-
-    return demistoSevirity
+        return 0
 
 
 def gd_severity_mapping(severity):
-    if severity == 'Low':
-        gdSevirity = 1
+    if severity == 'High':
+        return 7
     elif severity == 'Medium':
-        gdSevirity = 4
-    elif severity == 'High':
-        gdSevirity = 7
+        return 4
     else:
-        gdSevirity = 1
-
-    return gdSevirity
+        return 1
 
 
 def list_findings(client, args):
@@ -364,9 +349,7 @@ def get_findings(client, args):
             DetectorId=args.get('detectorId'),
             FindingIds=parse_finding_ids(args.get('findingIds')))
 
-        data = []
-        for finding in response['Findings']:
-            data.append({
+        data = [{
                 'AccountId': finding['AccountId'],
                 'Arn': finding['Arn'],
                 'CreatedAt': finding['CreatedAt'],
@@ -375,8 +358,7 @@ def get_findings(client, args):
                 'Region': finding['Region'],
                 'Title': finding['Title'],
                 'Type': finding['Type'],
-            })
-
+            } for finding in response['Findings']]
         output = json.dumps(response['Findings'], cls=DatetimeEncoder)
         raw = json.loads(output)
         ec = {"AWS.GuardDuty.Findings(val.FindingId === obj.Id)": raw}
@@ -387,11 +369,13 @@ def get_findings(client, args):
 
 
 def parse_incident_from_finding(finding):
-    incident = {}
-    incident['name'] = finding['Title']
-    incident['details'] = finding['Description']
-    incident['occurred'] = finding['CreatedAt']
-    incident['severity'] = severity_mapping(finding['Severity'])
+    incident = {
+        'name': finding['Title'],
+        'details': finding['Description'],
+        'occurred': finding['CreatedAt'],
+        'severity': severity_mapping(finding['Severity']),
+    }
+
     incident['rawJSON'] = json.dumps(finding, default=str)
     return incident
 
@@ -431,8 +415,7 @@ def create_sample_findings(client, args):
     try:
         kwargs = {'DetectorId': args.get('detectorId')}
         if args.get('findingTypes') is not None:
-            kwargs.update({'FindingTypes': parse_finding_ids(args.get('findingTypes'))})
-
+            kwargs['FindingTypes'] = parse_finding_ids(args.get('findingTypes'))
         response = client.create_sample_findings(**kwargs)
 
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
@@ -446,8 +429,7 @@ def archive_findings(client, args):
     try:
         kwargs = {'DetectorId': args.get('detectorId')}
         if args.get('findingIds') is not None:
-            kwargs.update({'FindingIds': parse_finding_ids(args.get('findingIds'))})
-
+            kwargs['FindingIds'] = parse_finding_ids(args.get('findingIds'))
         response = client.archive_findings(**kwargs)
 
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
@@ -461,8 +443,7 @@ def unarchive_findings(client, args):
     try:
         kwargs = {'DetectorId': args.get('detectorId')}
         if args.get('findingIds') is not None:
-            kwargs.update({'FindingIds': parse_finding_ids(args.get('findingIds'))})
-
+            kwargs['FindingIds'] = parse_finding_ids(args.get('findingIds'))
         response = client.unarchive_findings(**kwargs)
 
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
@@ -476,12 +457,11 @@ def update_findings_feedback(client, args):
     try:
         kwargs = {'DetectorId': args.get('detectorId')}
         if args.get('findingIds') is not None:
-            kwargs.update({'FindingIds': parse_finding_ids(args.get('findingIds'))})
+            kwargs['FindingIds'] = parse_finding_ids(args.get('findingIds'))
         if args.get('comments') is not None:
-            kwargs.update({'Comments': parse_finding_ids(args.get('comments'))})
+            kwargs['Comments'] = parse_finding_ids(args.get('comments'))
         if args.get('feedback') is not None:
-            kwargs.update({'Feedback': parse_finding_ids(args.get('feedback'))})
-
+            kwargs['Feedback'] = parse_finding_ids(args.get('feedback'))
         response = client.update_findings_feedback(**kwargs)
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
             return 'Findings Feedback sent!'
@@ -503,9 +483,7 @@ def list_members(client, args):
 
 def get_members(client, args):
     try:
-        accountId_list = []
-        accountId_list.append(args.get('accountIds'))
-
+        accountId_list = [args.get('accountIds')]
         response = client.get_members(
             DetectorId=args.get('detectorId'),
             AccountIds=accountId_list
